@@ -1,0 +1,6 @@
+# Need it if want to run tests
+sed -e 's/libsystemd/libelogind/' \
+    -i plugins/power/test.py
+
+rm -fr subprojects/*
+cp -av $CWD/pre-install/gnome-settings-daemon/*.wrap subprojects/

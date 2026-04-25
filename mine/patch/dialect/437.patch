@@ -1,0 +1,56 @@
+From 24a3e3e6f7aa1ef4786cc0f17ec6b2521d20c3f5 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Ball=C3=B3=20Gy=C3=B6rgy?= <ballogyor@gmail.com>
+Date: Tue, 25 Nov 2025 16:13:02 +0100
+Subject: [PATCH] Add D-Bus service file (#431)
+
+---
+ data/app.drey.Dialect.desktop.in.in |  1 +
+ data/app.drey.Dialect.service.in    |  3 +++
+ data/meson.build                    | 12 ++++++++++++
+ 3 files changed, 16 insertions(+)
+ create mode 100644 data/app.drey.Dialect.service.in
+
+diff --git a/data/app.drey.Dialect.desktop.in.in b/data/app.drey.Dialect.desktop.in.in
+index 6ccd3229..5ef7e852 100755
+--- a/data/app.drey.Dialect.desktop.in.in
++++ b/data/app.drey.Dialect.desktop.in.in
+@@ -4,6 +4,7 @@ Version=1.0
+ Type=Application
+ Terminal=false
+ StartupNotify=true
++DBusActivatable=true
+ Exec=dialect
+ Name=Dialect
+ Comment=Translate between languages
+diff --git a/data/app.drey.Dialect.service.in b/data/app.drey.Dialect.service.in
+new file mode 100644
+index 00000000..36aef474
+--- /dev/null
++++ b/data/app.drey.Dialect.service.in
+@@ -0,0 +1,3 @@
++[D-BUS Service]
++Name=@app-id@
++Exec=@bindir@/dialect --gapplication-service
+diff --git a/data/meson.build b/data/meson.build
+index e3300447..a63cbe89 100644
+--- a/data/meson.build
++++ b/data/meson.build
+@@ -60,6 +60,18 @@ if compile_schemas.found()
+   )
+ endif
+ 
++# Install D-Bus service file
++service_conf = configuration_data()
++service_conf.set('app-id', application_id)
++service_conf.set('bindir', join_paths(get_option('prefix'), get_option('bindir')))
++configure_file(
++  input: '@0@.service.in'.format(base_id),
++  output: '@0@.service'.format(application_id),
++  configuration: service_conf,
++  install: true,
++  install_dir: join_paths(get_option('datadir'), 'dbus-1/services')
++)
++
+ # Install colored icon
+ install_data(
+   '@0@.svg'.format(application_id),

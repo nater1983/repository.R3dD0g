@@ -1,0 +1,19 @@
+# HOW TO EDIT THIS FILE:
+# The "handy ruler" below makes it easier to edit a package description.
+# Line up the first '|' above the ':' following the base package name, and
+# the '|' on the right side marks the last column you can put a character in.
+# You must make exactly 11 lines for the formatting to be correct.  It's also
+# customary to leave one space after the ':' except on otherwise blank lines.
+
+         |-----handy-ruler------------------------------------------------------|
+rhythmbox: rhythmbox (Music Management Application)
+rhythmbox:
+rhythmbox: Rhythmbox is an integrated music management application based on the
+rhythmbox: powerful GStreamer media framework. It has a number of features,
+rhythmbox: including an easy to use music browser, searching and sorting,
+rhythmbox: comprehensive audio format support through GStreamer, Internet Radio
+rhythmbox: support, playlists and more.
+rhythmbox: Rhythmbox is extensible through a plugin system.
+rhythmbox:
+rhythmbox: Homepage: https://gitlab.gnome.org/GNOME/rhythmbox
+rhythmbox:
