@@ -19,8 +19,8 @@
 #  OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #  ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# Adapted by Nathaniel Russell <naterussell83@gmail.com> for the modular Gnome build.
-# Gnome.SlackBuild Script
+# Adapted by Nathaniel Russell <naterussell83@gmail.com> for the modular Mine build.
+# Mine.SlackBuild Script
 
 # Set up general build options
 CLEANUP=${CLEANUP:-"yes"}       # Clean up after build
@@ -48,8 +48,8 @@ pkgbase() {
 cd $(dirname $0) ; CWD=$(pwd)
 
 TMP=${TMP:-/home}
-SLACK_GNOME_BUILD_DIR=${GNOME_BUILD_DIR:-$TMP/build}
-mkdir -p "$SLACK_GNOME_BUILD_DIR"
+SLACK_MINE_BUILD_DIR=${MINE_BUILD_DIR:-$TMP/build}
+mkdir -p "$SLACK_MINE_BUILD_DIR"
 
 extract_archive() {
   # Find the archive first:
@@ -258,7 +258,7 @@ precheck() {
       if [ "$CHECKOUT" = "yes" ] || [ "$CHECKOUT" = "YES" ]; then
         THEDATE=$(date +%Y%m%d)
         echo "Checking out ${MODLOC}:${MODBASE} at date ${THEDATE}."
-        $CWD/gnome_checkout.sh -c -d ${THEDATE} -o $CWD/src ${MODLOC}:${MODBASE}
+        $CWD/mine_checkout.sh -c -d ${THEDATE} -o $CWD/src ${MODLOC}:${MODBASE}
         RETVAL=$?
         if [ $RETVAL -ne 0 ]; then
           echo "Error while checking out '$MODPKG' ($MODLOC/$MODBASE) !"
@@ -286,24 +286,24 @@ precheck() {
   fi
 }
 
-# Function to download and build GNOME package
+# Function to download and build MINE package
 build_mod_pkg() {
-  gnome_module=$1
-  gnome_pkg=$2
+  mine_module=$1
+  mine_pkg=$2
 
   cd $CWD/modules
 
-  # See if $gnome_module is a module name like "gnome-frameworks":
-  if [ ! -z "$gnome_module" ]; then
-    if [ ! -f "$gnome_module" ]; then
-      echo "** '${gnome_module}' is not an existing module."
+  # See if $mine_module is a module name like "mine-frameworks":
+  if [ ! -z "$mine_module" ]; then
+    if [ ! -f "$mine_module" ]; then
+      echo "** '${mine_module}' is not an existing module."
       return
     fi
   fi
-  PKG=${SLACK_GNOME_BUILD_DIR}/${gnome_module}/package-${gnome_module}
+  PKG=${SLACK_MINE_BUILD_DIR}/${mine_module}/package-${mine_module}
   rm -rf $PKG
   mkdir -p $PKG
-  ( for PKGNAME in $(cat $gnome_module |grep -v "^$" |grep -v "^ *#") ; do
+  ( for PKGNAME in $(cat $mine_module |grep -v "^$" |grep -v "^ *#") ; do
       if grep -wq "^${PKGNAME}$" ${CWD}/package-blacklist ; then
         if [ -z "$PRINT_PACKAGE_NAME" ]; then
           echo "** '${PKGNAME}' is on the package blacklist."
@@ -312,7 +312,7 @@ build_mod_pkg() {
       fi
       # Find the full source filename - yeah ugly, but I had two goals:
       # 1- source tarball can be in a random subdirectory of src/
-      # 2- differentiate between e.g. 'gnome-shell' and 'gnome-settings-daemon'
+      # 2- differentiate between e.g. 'mine-shell' and 'mine-settings-daemon'
       if [ -f $CWD/pkgsrc/$PKGNAME ]; then
         PKGSRC=$(basename $(cat $CWD/pkgsrc/$PKGNAME))
         PKGLOC=$(dirname $(cat $CWD/pkgsrc/$PKGNAME))
@@ -320,19 +320,19 @@ build_mod_pkg() {
         PKGSRC=$PKGNAME
         PKGLOC=""
       fi
-      #gnome_src=$(basename $(find $CWD/src/$PKGLOC -name "$PKGSRC-*.tar.?z*" |grep -vE ".asc$|.sig$" |grep -E "$PKGSRC-[^-]+.tar.*$|$PKGSRC-[0-9].+.tar.*$") 2>/dev/null)
-      #if [ "x$gnome_src" = "x" ]; then
+      #mine_src=$(basename $(find $CWD/src/$PKGLOC -name "$PKGSRC-*.tar.?z*" |grep -vE ".asc$|.sig$" |grep -E "$PKGSRC-[^-]+.tar.*$|$PKGSRC-[0-9].+.tar.*$") 2>/dev/null)
+      #if [ "x$mine_src" = "x" ]; then
       #  if [ -z "$PRINT_PACKAGE_NAME" ]; then
       #    echo "** Did not find '$PKGSRC' in src"
       #  fi
       #  continue
       #fi
-      gnome_src=$(find "$CWD/src/$PKGLOC" -type f \( -name "$PKGSRC-*.tar.?z*" -o -name "$PKGSRC-*.deb" \) \
+      mine_src=$(find "$CWD/src/$PKGLOC" -type f \( -name "$PKGSRC-*.tar.?z*" -o -name "$PKGSRC-*.deb" \) \
         | grep -vE ".asc$|.sig$" \
         | grep -E "$PKGSRC-[^-]+.(tar.*|deb)$|$PKGSRC-[0-9].+.(tar.*|deb)$" \
         | head -n1 | xargs -r basename)
       
-      if [ -z "$gnome_src" ]; then
+      if [ -z "$mine_src" ]; then
         if [ -z "$PRINT_PACKAGE_NAME" ]; then
           echo "** Did not find '$PKGSRC' in src"
         fi
@@ -344,12 +344,12 @@ build_mod_pkg() {
       if grep -wq "^${PKGNAME}$" ${CWD}/noarch ; then
         PKGARCH=noarch
       fi 
-      cd $SLACK_GNOME_BUILD_DIR/${gnome_module}
-      # If $gnome_pkg is set, we only want to build one package:
-      if [ ! -z "$gnome_pkg" ]; then
-        if [ "$gnome_pkg" = "$PKGNAME" ]; then
+      cd $SLACK_MINE_BUILD_DIR/${mine_module}
+      # If $mine_pkg is set, we only want to build one package:
+      if [ ! -z "$mine_pkg" ]; then
+        if [ "$mine_pkg" = "$PKGNAME" ]; then
           # Set $PKG to a private dir for the modular package build:
-          PKG=$SLACK_GNOME_BUILD_DIR/${gnome_module}/package-$PKGNAME
+          PKG=$SLACK_MINE_BUILD_DIR/${mine_module}/package-$PKGNAME
           rm -rf $PKG
           mkdir -p $PKG
         else
@@ -358,27 +358,27 @@ build_mod_pkg() {
       else
         if [ -z "$PRINT_PACKAGE_NAME" ]; then
           echo
-          echo "Building from source ${gnome_src}"
+          echo "Building from source ${mine_src}"
           echo
         fi
       fi
 
       # Set $PKG to a private dir for the modular package build:
-      PKG=$SLACK_GNOME_BUILD_DIR/${gnome_module}/package-$PKGNAME
+      PKG=$SLACK_MINE_BUILD_DIR/${mine_module}/package-$PKGNAME
       rm -rf $PKG
       mkdir -p $PKG
 
       # Let's figure out the version number on the modular package:
-      #MODULAR_PACKAGE_VERSION=$(echo $gnome_src | rev | cut -f 3- -d . | cut -f 1 -d - | rev)
+      #MODULAR_PACKAGE_VERSION=$(echo $mine_src | rev | cut -f 3- -d . | cut -f 1 -d - | rev)
 
-      if [[ "$gnome_src" == *.deb ]]; then
+      if [[ "$mine_src" == *.deb ]]; then
         # For .deb files like pandoc-3.8.3.deb
-        MODULAR_PACKAGE_VERSION=$(basename "$gnome_src")
+        MODULAR_PACKAGE_VERSION=$(basename "$mine_src")
         MODULAR_PACKAGE_VERSION=${MODULAR_PACKAGE_VERSION%.deb}   # remove .deb
         MODULAR_PACKAGE_VERSION=${MODULAR_PACKAGE_VERSION#*-}     # remove prefix before first dash
       else
         # For tarballs (default SlackBuild logic)
-        MODULAR_PACKAGE_VERSION=$(echo "$gnome_src" | rev | cut -f 3- -d . | cut -f 1 -d - | rev)
+        MODULAR_PACKAGE_VERSION=$(echo "$mine_src" | rev | cut -f 3- -d . | cut -f 1 -d - | rev)
       fi
 
       # If this variable is passed to the script, nothing will be built.
@@ -402,15 +402,15 @@ build_mod_pkg() {
           MODBUILD=$BUILD
         fi
         TESTPKGNAME="${PKGNAME}-${MODULAR_PACKAGE_VERSION}-${PKGARCH}-${MODBUILD}${TAG}.txz"
-        if [ -r ${SLACK_GNOME_BUILD_DIR}/${gnome_module}/$TESTPKGNAME -o -r ${SLACK_GNOME_BUILD_DIR}/$TESTPKGNAME ]; then
+        if [ -r ${SLACK_MINE_BUILD_DIR}/${mine_module}/$TESTPKGNAME -o -r ${SLACK_MINE_BUILD_DIR}/$TESTPKGNAME ]; then
           echo "** Skipping already built package $TESTPKGNAME."
           continue
         fi
       fi 
 
-      rm -rf $(pkgbase $gnome_src)
-      extract_archive $gnome_src || exit 1
-      cd $(pkgbase $gnome_src) || exit 1
+      rm -rf $(pkgbase $mine_src)
+      extract_archive $mine_src || exit 1
+      cd $(pkgbase $mine_src) || exit 1
 
       fix_perms
 
@@ -429,8 +429,8 @@ build_mod_pkg() {
         # Run meson, using custom meson script if needed:
         if [ -r $CWD/meson/${PKGNAME} ]; then
           . $CWD/meson/${PKGNAME}
-        elif [ -r $CWD/meson/${gnome_module} ]; then
-          . $CWD/meson/${gnome_module}
+        elif [ -r $CWD/meson/${mine_module} ]; then
+          . $CWD/meson/${mine_module}
         else
           . $CWD/meson/meson
         fi
@@ -438,8 +438,8 @@ build_mod_pkg() {
       # Run make, using custom make script if needed:
         if [ -r $CWD/make/${PKGNAME} ]; then
           . $CWD/make/${PKGNAME}
-        elif [ -r $CWD/make/${gnome_module} ]; then
-          . $CWD/make/${gnome_module}
+        elif [ -r $CWD/make/${mine_module} ]; then
+          . $CWD/make/${mine_module}
         else
           # This is the default make && make install routine:
           . $CWD/make/make
@@ -447,7 +447,7 @@ build_mod_pkg() {
       fi
 
       # Back to source toplevel builddir, since meson may have run in a subdir:
-      cd $SLACK_GNOME_BUILD_DIR/${gnome_module}/$(pkgbase $gnome_src)
+      cd $SLACK_MINE_BUILD_DIR/${mine_module}/$(pkgbase $mine_src)
       
       # Source PRGNAM from the makepkg file if available
       if [ -r "$CWD/makepkg/${PKGNAME}" ]; then
@@ -514,7 +514,7 @@ build_mod_pkg() {
       done
 
       # If this is a modular package, build it here:
-      if [ -d $SLACK_GNOME_BUILD_DIR/${gnome_module}/package-${PKGNAME} ]; then
+      if [ -d $SLACK_MINE_BUILD_DIR/${mine_module}/package-${PKGNAME} ]; then
         cd $PKG
         process_man_pages
         process_info_pages
@@ -554,21 +554,21 @@ build_mod_pkg() {
             echo "Using custom package name: $PACKAGE_NAME, version: $PACKAGE_VERSION with build: $BUILD"
     
             # Use the parsed values in the makepkg command
-            /sbin/makepkg --remove-tmp-rpaths -l y -c n "${SLACK_GNOME_BUILD_DIR}/${gnome_module}/${PACKAGE_NAME}-$(echo $PACKAGE_VERSION | tr - _)-${PKGARCH}-${BUILD}.txz"
+            /sbin/makepkg --remove-tmp-rpaths -l y -c n "${SLACK_MINE_BUILD_DIR}/${mine_module}/${PACKAGE_NAME}-$(echo $PACKAGE_VERSION | tr - _)-${PKGARCH}-${BUILD}.txz"
         else
         # Fallback to default makepkg process with original PKGNAME
-          /sbin/makepkg --remove-tmp-rpaths -l y -c n "${SLACK_GNOME_BUILD_DIR}/${gnome_module}/${PKGNAME}-$(echo $MODULAR_PACKAGE_VERSION | tr - _)-${PKGARCH}-${MODBUILD}${TAG}.txz"
+          /sbin/makepkg --remove-tmp-rpaths -l y -c n "${SLACK_MINE_BUILD_DIR}/${mine_module}/${PKGNAME}-$(echo $MODULAR_PACKAGE_VERSION | tr - _)-${PKGARCH}-${MODBUILD}${TAG}.txz"
         fi
 
         # We will continue with the fresh packages installed:
         if [ "$UPGRADE" = "yes" ] || [ "$UPGRADE" = "YES" ]; then
             if [ -r "$CWD/makepkg/${PKGNAME}" ]; then
                 . "$CWD/makepkg/${PKGNAME}"
-                upgradepkg --install-new --reinstall ${SLACK_GNOME_BUILD_DIR}/${gnome_module}/${PRGNAM:-$PACKAGE_NAME}-${PKGVERSION:-$PACKAGE_VERSION}-${PKGARCH}-${MODBUILD}${TAG}.txz
+                upgradepkg --install-new --reinstall ${SLACK_MINE_BUILD_DIR}/${mine_module}/${PRGNAM:-$PACKAGE_NAME}-${PKGVERSION:-$PACKAGE_VERSION}-${PKGARCH}-${MODBUILD}${TAG}.txz
                 # Keep MIME database current:
                 /usr/bin/update-mime-database /usr/share/mime >/dev/null 2>&1 &
             else
-                upgradepkg --install-new --reinstall ${SLACK_GNOME_BUILD_DIR}/${gnome_module}/${PKGNAME}-${MODULAR_PACKAGE_VERSION}-${PKGARCH}-${MODBUILD}${TAG}.txz
+                upgradepkg --install-new --reinstall ${SLACK_MINE_BUILD_DIR}/${mine_module}/${PKGNAME}-${MODULAR_PACKAGE_VERSION}-${PKGARCH}-${MODBUILD}${TAG}.txz
                 # Keep MIME database current:
                 /usr/bin/update-mime-database /usr/share/mime >/dev/null 2>&1 &
             fi
@@ -578,7 +578,7 @@ build_mod_pkg() {
   )
 }
 
-# Process the module queue for GNOME and KDE. Format is:
+# Process the module queue for MINE and KDE. Format is:
 # module[:subpackage[,subpackage]] [module...]
 deterministic_build() {
   RET=0
@@ -618,28 +618,28 @@ deterministic_build() {
 # MAIN PART #
 
 # Import the build configuration options for as far as they are not already set:
-[ -r ./gnome.options ] && . ./gnome.options
+[ -r ./mine.options ] && . ./mine.options
 
-# This avoids compiling a version number into GNOME's .la files:
+# This avoids compiling a version number into MINE's .la files:
 GTKDIR=/usr/lib${LIBDIRSUFFIX}/gtk-3.0 ; export GTKDIR
-GNOMEVARS=/usr/lib${LIBDIRSUFFIX}/gnome ; export GNOMEVARS
+MINEVARS=/usr/lib${LIBDIRSUFFIX}/mine ; export MINEVARS
 
-# Get the GNOME environment variables:
-[ -d post-install/gservice ] && eval $(sed -e "s#/lib#/lib${LIBDIRSUFFIX}#" ./post-install/gservice/profile.d/gnome.sh)
+# Get the MINE environment variables:
+[ -d post-install/gservice ] && eval $(sed -e "s#/lib#/lib${LIBDIRSUFFIX}#" ./post-install/gservice/profile.d/mine.sh)
 
-# Build/install libgnome before compiling gnome-shell.
-# Build/install libgtk before compiling gnome-terminal.
-# Build/install gnome-shell before compiling gnome-settings-daemon.
-GNOMEMODS=" \
+# Build/install libmine before compiling mine-shell.
+# Build/install libgtk before compiling mine-terminal.
+# Build/install mine-shell before compiling mine-settings-daemon.
+MINEMODS=" \
   blacklist \
-  gnome \
-  gnome-extras \
+  mine \
+  mine-extras \
   applications \
   "
 
 # Allow for specification of individual packages to be built:
 if [ -z "$1" ]; then
-  MODQUEUE=$GNOMEMODS
+  MODQUEUE=$MINEMODS
 else
   MODQUEUE="$*"
 fi
@@ -661,7 +661,7 @@ do
     # Success!
     if [ "$CLEANUP" = "yes" -o "$CLEANUP" = "YES" ]; then
       # Clean out package and build directories:
-      find ${SLACK_GNOME_BUILD_DIR}/$(echo $module |cut -f1 -d:) -type d -mindepth 1 -maxdepth 1 |xargs rm -rf
+      find ${SLACK_MINE_BUILD_DIR}/$(echo $module |cut -f1 -d:) -type d -mindepth 1 -maxdepth 1 |xargs rm -rf
     fi
   else
     if [ -z "$PRINT_PACKAGE_NAME" ]; then
