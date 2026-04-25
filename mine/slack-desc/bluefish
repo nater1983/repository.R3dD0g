@@ -1,0 +1,19 @@
+# HOW TO EDIT THIS FILE:
+# The "handy ruler" below makes it easier to edit a package description.
+# Line up the first '|' above the ':' following the base package name, and
+# the '|' on the right side marks the last column you can put a character in.
+# You must make exactly 11 lines for the formatting to be correct.  It's also
+# customary to leave one space after the ':' except on otherwise blank lines.
+
+        |-----handy-ruler------------------------------------------------------|
+bluefish: bluefish (Code and text editor for web and software development)
+bluefish:
+bluefish: Bluefish is a powerful editor targeted towards programmers and web
+bluefish: developers. It supports many programming and markup languages while
+bluefish: remaining fast and lightweight. Features include syntax highlighting
+bluefish: with nested language support, auto indent, auto completion, project
+bluefish: support, remote file access, multi-file regex search and replace,
+bluefish: external tool integration, snippets, spell checking, and Emmet.
+bluefish:
+bluefish: Homepage: https://bluefish.openoffice.nl/
+bluefish:
