@@ -64,15 +64,15 @@ export NUMJOBS
 
 # Additional cmake flags that are spanned across the KDE modules
 # Do not use "final build" unless we build an actual release.
-export GNOME_OPT_ARGS=" \
+export MINE_OPT_ARGS=" \
  "
 
-export GNOME_CMAKE_OPT_ARGS=(
+export MINE_CMAKE_OPT_ARGS=(
    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 )
 
 # Gnome cmake specific flags:
-export GNOME_CMAKE_ARGS=(
+export MINE_CMAKE_ARGS=(
   "-DCMAKE_C_FLAGS:STRING=$SLKCFLAGS"
   "-DCMAKE_C_FLAGS_RELEASE:STRING=$SLKCFLAGS"
   "-DCMAKE_CXX_FLAGS:STRING=$SLKCFLAGS"
@@ -89,7 +89,7 @@ export GNOME_CMAKE_ARGS=(
 )
 
 # Double-quoting required because $SLKCFLAGS contains spaces:
-export GNOME_BUILD_ARGS=(
+export MINE_BUILD_ARGS=(
     --buildtype=release
     --infodir=/usr/info
     --libdir=/usr/lib${LIBDIRSUFFIX}
@@ -107,7 +107,7 @@ export GNOME_BUILD_ARGS=(
  )
 
 # Double-quoting required because $SLKCFLAGS contains spaces:
-export GNOME_MAKE_ARGS=(
+export MINE_MAKE_ARGS=(
   --prefix=/usr
   --libdir=/usr/lib${LIBDIRSUFFIX}
   --sysconfdir=/etc
