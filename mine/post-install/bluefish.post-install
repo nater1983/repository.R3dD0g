@@ -1,0 +1,2 @@
+# These file's shouldn't be there.
+rm -f $PKG/usr/share/applications/mimeinfo.cache
