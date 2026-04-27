@@ -1,2 +1,5 @@
+mkdir -p $PKG/opt/$PRGNAM
+cp -a $TMP/$PRGNAM-$VERSION-linux-$SRCARCH/* $PKG/opt/$PRGNAM
+
 mkdir -p $PKG/usr/bin
 ( cd $PKG/usr/bin; ln -sf ../../opt/$PRGNAM/$PRGNAM $PRGNAM )
