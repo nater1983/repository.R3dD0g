@@ -1,0 +1,2 @@
+install -D -m 644 $CWD/post-install/mattermost-desktop/mattermost-desktop.desktop $PKG/usr/share/applications/mattermost-desktop.desktop
+install -D -m 644 $CWD/post-install/mattermost-desktop/app_icon.png $PKG/usr/share/icons/hicolor/scalable/apps/mattermost-desktop.png
