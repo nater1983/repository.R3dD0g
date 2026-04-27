@@ -1,5 +1,5 @@
-mkdir -p $PKG/opt/$PRGNAM
-cp -a $TMP/$PRGNAM-$VERSION-linux-$SRCARCH/* $PKG/opt/$PRGNAM
+mkdir -p $PKG/opt/$PKGNAME
+cp -a $TMP/${PKGNAME}-${MODULAR_PACKAGE_VERSION}/* $PKG/opt/$PKGNAME
 
 mkdir -p $PKG/usr/bin
-( cd $PKG/usr/bin; ln -sf ../../opt/$PRGNAM/$PRGNAM $PRGNAM )
+( cd $PKG/usr/bin; ln -sf ../../opt/$PKGNAME/$PKGNAME $PKGNAME )
