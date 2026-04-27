@@ -1,0 +1,2 @@
+mkdir -p $PKG/usr/bin
+( cd $PKG/usr/bin; ln -sf ../../opt/$PRGNAM/$PRGNAM $PRGNAM )
