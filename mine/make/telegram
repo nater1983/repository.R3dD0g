@@ -1,0 +1,2 @@
+mkdir -p $PKG/opt/$PKGNAME
+cp -a * $PKG/opt/$PKGNAME
