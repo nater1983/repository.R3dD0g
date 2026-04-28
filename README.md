@@ -1,8 +1,8 @@
-# GFS ( Gnome For Slackware )
+# RDLNX ( These are just come of my SlackBuilds )
 
 
-> We're living the future so
-> the present is our past.
+> These's are just some of my
+> Slackbuilds that I use.
 > LONG LIVE SLACKWARE!
 
-*Gnome from scratch*, *Gnome for Slackware*
+*RDLNX*, *Reddog for Slackware*
