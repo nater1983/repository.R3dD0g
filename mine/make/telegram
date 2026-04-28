@@ -1,2 +1,5 @@
 mkdir -p $PKG/opt/$PKGNAME
 cp -a * $PKG/opt/$PKGNAME
+wget https://github.com/telegramdesktop/tdesktop/blob/dev/{REVIEW,README,CLAUDE,AGENTS}.md
+wget https://github.com/telegramdesktop/tdesktop/blob/dev/changelog.txt
+wget https://github.com/telegramdesktop/tdesktop/blob/dev/{LICENSE,LEGAL}
