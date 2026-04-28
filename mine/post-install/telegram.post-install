@@ -1,0 +1,8 @@
+mkdir -p $PKG/usr/bin
+ln -sf /opt/$PKGNAME/Telegram $PKG/usr/bin
+
+mkdir -p $PKG/usr/share/applications
+cat $CWD/$PKGNAME.desktop > $PKG/usr/share/applications/$PKGNAME.desktop
+
+mkdir -p $PKG/usr/share/pixmaps
+cp $CWD/$PKGNAME.png $PKG/usr/share/pixmaps
