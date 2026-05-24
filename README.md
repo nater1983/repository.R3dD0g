@@ -1,4 +1,4 @@
-# RDLNX ( These are just come of my SlackBuilds )
+# RDLNX ( These are just some of my SlackBuilds )
 
 
 > These's are just some of my
