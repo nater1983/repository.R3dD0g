@@ -132,7 +132,7 @@ cmd_status() {
   machine_id=$(cat /etc/machine-id 2>/dev/null | tr -d '[:space:]')
   [ -z "$machine_id" ] && machine_id="n/a"
 
-  boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null | tr -d '-[:space:]')
+  boot_id=$(tr -d '[:space:]-' < /proc/sys/kernel/random/boot_id 2>/dev/null)
   [ -z "$boot_id" ] && boot_id="n/a"
 
   virtualization=$(detect_virtualization)
