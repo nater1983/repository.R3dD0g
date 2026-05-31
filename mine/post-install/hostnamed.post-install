@@ -1,1 +1,1 @@
-install -vDm 0755 $CWD/post-install/hostnamed/hostnamectl $PKG/usr/bin
+install -vDm 0755 $CWD/post-install/hostnamed/hostnamectl -t $PKG/usr/bin
