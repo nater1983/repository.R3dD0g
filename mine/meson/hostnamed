@@ -4,8 +4,7 @@ cd build
   CXXFLAGS="$SLKCFLAGS" \
   meson setup ..\
     "${MINE_BUILD_ARGS[@]}" \
-    $MINE_OPT_ARGS \
-    -Ddbus_system_conf_dir=/usr/share
+    $MINE_OPT_ARGS
   "${NINJA:=ninja}"
   DESTDIR=$PKG $NINJA install
 cd ..
