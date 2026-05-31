@@ -200,9 +200,9 @@ cmd_set_hostname() {
 
   [ -z "$name" ] && die "no hostname given"
 
-  # validate hostname (RFC1123 / systemd-compatible)
+  # validate static/transient hostname (RFC 1123)
   if [ "$mode" != "pretty" ]; then
-    echo "$name" | grep -qE '^(?=.{1,253}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$' \
+    echo "$name" | grep -qP '^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?$' \
       || die "invalid hostname '$name'"
   fi
 
