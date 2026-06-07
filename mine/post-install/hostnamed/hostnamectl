@@ -61,6 +61,7 @@ machine_info_set() {
   fi
 
   mv "$tmp" "$MACHINE_INFO_FILE" || { rm -f "$tmp"; die "cannot update $MACHINE_INFO_FILE"; }
+  chmod 644 "$MACHINE_INFO_FILE" || die "cannot set permissions on $MACHINE_INFO_FILE"
 }
 
 # Write out a fully populated /etc/machine-info from detected values.
@@ -98,6 +99,7 @@ LOCATION=""
 EOF
 
   mv "$tmp" "$MACHINE_INFO_FILE" || rm -f "$tmp"
+  chmod 644 "$MACHINE_INFO_FILE"
   echo "Created $MACHINE_INFO_FILE"
 }
 
