@@ -7,7 +7,7 @@ import shutil
 main_source_dir = "/home/build"
 
 # Destination base directory is fixed to /mnt/www/linux
-dest_base_dir = "/mnt/www/linux"
+dest_base_dir = "/mnt/www/mirror/new"
 
 # Get user input for the subdirectory under /home/build
 subdir = input("Enter the subdirectory under '/home/build': ").strip()
