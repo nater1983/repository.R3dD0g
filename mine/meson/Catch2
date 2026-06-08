@@ -3,10 +3,13 @@ cd build
   CFLAGS="$SLKCFLAGS" \
   CXXFLAGS="$SLKCFLAGS" \
   meson setup ..\
-    "${GNOME_BUILD_ARGS[@]}" \
-    $GNOME_OPT_ARGS \
-    -Dinstall=true \
-    -Dtests=false
+    "${MINE_BUILD_ARGS[@]}" \
+    $MINE_OPT_ARGS \
+    -Dprivileged-group=wheel \
+    -Dhwclock_conf=/etc/hardwareclock \
+    -Dadjtime_conf=/etc/adjtime \
+    -Dntpd_conf=/etc/ntp.conf \
+    -Dntpd_rc=/etc/rc.d/rc.ntpd
   "${NINJA:=ninja}"
   DESTDIR=$PKG $NINJA install
 cd ..
