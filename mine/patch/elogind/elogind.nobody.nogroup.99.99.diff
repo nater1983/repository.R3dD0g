@@ -1,0 +1,118 @@
+diff -ruN elogind-257.14.orig/src/basic/user-util.c elogind-257.14/src/basic/user-util.c
+--- elogind-257.14.orig/src/basic/user-util.c	2026-05-08 15:46:42.000000000 +0300
++++ elogind-257.14/src/basic/user-util.c	2026-05-13 22:48:21.780831484 +0300
+@@ -195,7 +195,7 @@
+         assert(username);
+         assert(*username);
+ 
+-        /* We enforce some special rules for uid=0 and uid=65534: in order to avoid NSS lookups for root we hardcode
++        /* We enforce some special rules for uid=0 and uid=99: in order to avoid NSS lookups for root we hardcode
+          * their user record data. */
+ 
+         if (STR_IN_SET(*username, "root", "0")) {
+@@ -213,7 +213,7 @@
+                 return 0;
+         }
+ 
+-        if (STR_IN_SET(*username, NOBODY_USER_NAME, "65534") &&
++        if (STR_IN_SET(*username, NOBODY_USER_NAME, "99") &&
+             synthesize_nobody()) {
+                 *username = NOBODY_USER_NAME;
+ 
+@@ -350,7 +350,7 @@
+                 return 0;
+         }
+ 
+-        if (STR_IN_SET(*groupname, NOBODY_GROUP_NAME, "65534") &&
++        if (STR_IN_SET(*groupname, NOBODY_GROUP_NAME, "99") &&
+             synthesize_nobody()) {
+                 *groupname = NOBODY_GROUP_NAME;
+ 
+@@ -941,7 +941,7 @@
+ bool synthesize_nobody(void) {
+         /* Returns true when we shall synthesize the "nobody" user (which we do by default). This can be turned off by
+          * touching /etc/systemd/dont-synthesize-nobody in order to provide upgrade compatibility with legacy systems
+-         * that used the "nobody" user name and group name for other UIDs/GIDs than 65534.
++         * that used the "nobody" user name and group name for other UIDs/GIDs than 99.
+          *
+          * Note that we do not employ any kind of synchronization on the following caching variable. If the variable is
+          * accessed in multi-threaded programs in the worst case it might happen that we initialize twice, but that
+diff -ruN elogind-257.14.orig/src/basic/user-util.h elogind-257.14/src/basic/user-util.h
+--- elogind-257.14.orig/src/basic/user-util.h	2026-05-08 15:46:42.000000000 +0300
++++ elogind-257.14/src/basic/user-util.h	2026-05-13 22:48:19.135208641 +0300
+@@ -89,8 +89,8 @@
+ #define UID_INVALID ((uid_t) -1)
+ #define GID_INVALID ((gid_t) -1)
+ 
+-#define UID_NOBODY ((uid_t) 65534U)
+-#define GID_NOBODY ((gid_t) 65534U)
++#define UID_NOBODY ((uid_t) 99U)
++#define GID_NOBODY ((gid_t) 99U)
+ 
+ /* If REMOUNT_IDMAPPING_HOST_ROOT is set for remount_idmap() we'll include a mapping here that maps the host
+  * root user accessing the idmapped mount to the this user ID on the backing fs. This is the last valid UID in
+diff -ruN elogind-257.14.orig/src/test/test-fs-util.c elogind-257.14/src/test/test-fs-util.c
+--- elogind-257.14.orig/src/test/test-fs-util.c	2026-05-08 15:46:42.000000000 +0300
++++ elogind-257.14/src/test/test-fs-util.c	2026-05-13 22:53:07.357326284 +0300
+@@ -178,8 +178,8 @@
+         usec_t test_mtime;
+         int r;
+ 
+-        test_uid = geteuid() == 0 ? 65534 : getuid();
+-        test_gid = geteuid() == 0 ? 65534 : getgid();
++        test_uid = geteuid() == 0 ? 99 : getuid();
++        test_gid = geteuid() == 0 ? 99 : getgid();
+ 
+         test_mtime = usec_sub_unsigned(now(CLOCK_REALTIME), USEC_PER_WEEK);
+ 
+diff -ruN elogind-257.14.orig/src/test/test-nss-users.c elogind-257.14/src/test/test-nss-users.c
+--- elogind-257.14.orig/src/test/test-nss-users.c	2026-05-08 15:46:42.000000000 +0300
++++ elogind-257.14/src/test/test-nss-users.c	2026-05-13 22:54:39.158025490 +0300
+@@ -223,7 +223,7 @@
+                                  NOBODY_USER_NAME,
+                                  "foo_no_such_user",
+                                  "0",
+-                                 "65534");
++                                 "99");
+         assert_se(names);
+ 
+         *the_modules = TAKE_PTR(modules);
+diff -ruN elogind-257.14.orig/src/test/test-user-util.c elogind-257.14/src/test/test-user-util.c
+--- elogind-257.14.orig/src/test/test-user-util.c	2026-05-08 15:46:42.000000000 +0300
++++ elogind-257.14/src/test/test-user-util.c	2026-05-13 22:54:30.117742635 +0300
+@@ -230,7 +230,7 @@
+         assert_se(!valid_user_group_name("", VALID_USER_ALLOW_NUMERIC|VALID_USER_RELAX));
+         assert_se(valid_user_group_name("0", VALID_USER_ALLOW_NUMERIC|VALID_USER_RELAX));
+         assert_se(valid_user_group_name("1", VALID_USER_ALLOW_NUMERIC|VALID_USER_RELAX));
+-        assert_se(valid_user_group_name("65534", VALID_USER_ALLOW_NUMERIC|VALID_USER_RELAX));
++        assert_se(valid_user_group_name("99", VALID_USER_ALLOW_NUMERIC|VALID_USER_RELAX));
+         assert_se(!valid_user_group_name("65535", VALID_USER_ALLOW_NUMERIC|VALID_USER_RELAX));
+         assert_se(valid_user_group_name("65536", VALID_USER_ALLOW_NUMERIC|VALID_USER_RELAX));
+         assert_se(!valid_user_group_name("-1", VALID_USER_ALLOW_NUMERIC|VALID_USER_RELAX));
+@@ -266,7 +266,7 @@
+         assert_se(!valid_user_group_name("", VALID_USER_ALLOW_NUMERIC));
+         assert_se(valid_user_group_name("0", VALID_USER_ALLOW_NUMERIC));
+         assert_se(valid_user_group_name("1", VALID_USER_ALLOW_NUMERIC));
+-        assert_se(valid_user_group_name("65534", VALID_USER_ALLOW_NUMERIC));
++        assert_se(valid_user_group_name("99", VALID_USER_ALLOW_NUMERIC));
+         assert_se(!valid_user_group_name("65535", VALID_USER_ALLOW_NUMERIC));
+         assert_se(valid_user_group_name("65536", VALID_USER_ALLOW_NUMERIC));
+         assert_se(!valid_user_group_name("-1", VALID_USER_ALLOW_NUMERIC));
+@@ -368,7 +368,7 @@
+         test_get_user_creds_one("root", "root", 0, 0, "/root", DEFAULT_USER_SHELL);
+         test_get_user_creds_one("0", "root", 0, 0, "/root", DEFAULT_USER_SHELL);
+         test_get_user_creds_one(NOBODY_USER_NAME, NOBODY_USER_NAME, UID_NOBODY, GID_NOBODY, "/", NOLOGIN);
+-        test_get_user_creds_one("65534", NOBODY_USER_NAME, UID_NOBODY, GID_NOBODY, "/", NOLOGIN);
++        test_get_user_creds_one("99", NOBODY_USER_NAME, UID_NOBODY, GID_NOBODY, "/", NOLOGIN);
+ }
+ 
+ #if 0 /// UNNEEDED by elogind
+@@ -393,7 +393,7 @@
+         test_get_group_creds_one("root", "root", 0);
+         test_get_group_creds_one("0", "root", 0);
+         test_get_group_creds_one(NOBODY_GROUP_NAME, NOBODY_GROUP_NAME, GID_NOBODY);
+-        test_get_group_creds_one("65534", NOBODY_GROUP_NAME, GID_NOBODY);
++        test_get_group_creds_one("99", NOBODY_GROUP_NAME, GID_NOBODY);
+ }
+ 
+ TEST(make_salt) {
