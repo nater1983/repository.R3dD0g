@@ -1,0 +1,106 @@
+#!/bin/bash
+#
+# /etc/rc.d/rc.elogind
+#     Initializes the elogind service on Slackware.
+#     There is no need to explicitly start a daemon; this will be taken
+#     care of automatically by dbus when that starts.
+#
+# Author:
+#     Eric Hameleers <alien@slackware.com> 2016
+#     Widya Walesa 2020
+#     Updated for userdbd support (2024)
+#
+# Description:
+#     We use elogind (standalone subset extracted from systemd) instead of
+#     systemd itself; so we need to initialize a systemd-like state.
+#
+# Note:
+#     Slackware has a tmpfs mounted on /run (see rc.S).
+#
+
+## ---Modified--- ##
+## 25/09/2025 by rizitis for support new beta elogind functions:
+
+
+start_elogind() {
+  if [ -x /lib@LIBDIRSUFFIX@/elogind/elogind ]; then
+    if [ ! -d /run/user ]; then
+      mkdir -p /run/user
+    fi
+    if [ ! -d /run/systemd ]; then
+      mkdir -p /run/elogind /sys/fs/cgroup/elogind
+      ( cd /run; rm -rf systemd; ln -sf elogind systemd; )
+      ( cd /sys/fs/cgroup; rm -rf systemd; ln -sf elogind systemd; )
+    fi
+
+   ## -- this patch needed to start properly elogind-userdbd create files in /run for varlinkctl --##
+   # Start elogind-userdbd if needed (only if socket doesn't exist)
+    if [ -x /lib@LIBDIRSUFFIX@/elogind/elogind-userdbd ] && [ ! -S /run/systemd/userdb/io.systemd.NameServiceSwitch ]; then
+      echo -n "Starting elogind-userdbd: "
+      /lib@LIBDIRSUFFIX@/elogind/elogind-userdbd &
+      echo $! > /run/elogind-userdbd.pid
+      sleep 0.2
+      echo "DONE"
+    fi
+
+    if pgrep -l -F /run/elogind.pid 2>/dev/null | grep -q elogind; then
+      echo "Elogind is already running"
+    else
+      echo -n "Starting elogind:  "
+      rm -f /run/elogind.pid
+      /lib@LIBDIRSUFFIX@/elogind/elogind --daemon
+      echo "DONE"
+    fi
+  fi
+}
+
+stop_elogind() {
+  local stopped=0
+
+  # Stop elogind-userdbd using PID file
+  if [ -f /run/elogind-userdbd.pid ]; then
+    echo -n "Stopping elogind-userdbd: "
+    kill $(cat /run/elogind-userdbd.pid) 2>/dev/null
+    rm -f /run/elogind-userdbd.pid
+    sleep 0.2
+    echo "DONE"
+    stopped=1
+  elif pgrep -f "elogind-userdbd" >/dev/null 2>&1; then
+    # Fallback: kill by name if PID file is missing
+    echo -n "Stopping elogind-userdbd (fallback): "
+    pkill -f "elogind-userdbd"
+    sleep 0.2
+    echo "DONE"
+    stopped=1
+  fi
+
+  # Stop main elogind daemon
+  if pgrep -l -F /run/elogind.pid 2>/dev/null | grep -q elogind; then
+    echo -n "Stopping elogind:  "
+    pkill -F /run/elogind.pid 2>/dev/null
+    rm -f /run/elogind.pid
+    sleep 0.3
+    echo "DONE"
+    stopped=1
+  fi
+
+  if [ $stopped -eq 0 ]; then
+    echo "Elogind is not running"
+  fi
+}
+
+case "$1" in
+  start)
+    start_elogind
+    ;;
+  stop)
+    stop_elogind
+    ;;
+  restart)
+    stop_elogind
+    sleep 1
+    start_elogind
+    ;;
+  *)
+    echo "Usage: $0 start|stop|restart"
+esac
