@@ -1,4 +1,5 @@
 rm -f Makefile
+touch Makefile
 mkdir meson-build
 cd meson-build
   CFLAGS="$SLKCFLAGS" \
