@@ -1,0 +1,29 @@
+# Create symlinks for elogind binaries to /bin/:
+mkdir -p $PKG/bin
+ln -sf /usr/bin/elogind-inhibit $PKG/bin/elogind-inhibit
+ln -sf /usr/bin/loginctl        $PKG/bin/loginctl
+## -- New entries just in case, work without them also for Desktops. --##
+ln -sf /usr/bin/userdbctl       $PKG/bin/userdbctl
+ln -sf /usr/bin/varlinkctl      $PKG/bin/varlinkctl
+
+# Make sure we do not overwrite the user's customizations:
+mv -i $PKG/etc/elogind/logind.conf{,.new}
+mv -i $PKG/etc/elogind/logind.conf.d/10-elogind.conf{,.new}
+mv -i $PKG/etc/elogind/sleep.conf{,.new}
+mv -i $PKG/etc/elogind/sleep.conf.d/10-elogind.conf{,.new}
+mv -i $PKG/etc/pam.d/elogind-user{,.new}
+
+# Add an rc script:
+mkdir -p $PKG/etc/rc.d
+cat $CWD/post-install/elogind/rc.elogind \
+  | sed -e "s/@LIBDIRSUFFIX@/${LIBDIRSUFFIX}/g" \
+  > $PKG/etc/rc.d/rc.elogind.new
+chmod 755 $PKG/etc/rc.d/rc.elogind.new
+
+# Create supported dirs in /etc/elogind/ (local config)
+mkdir -p $PKG/etc/elogind/logind.conf.d/ $PKG/etc/elogind/sleep.conf.d/
+
+# Add login1 policy file that allows users in the 'power' group
+# to shutdown/reboot the computer:
+mkdir -p $PKG/usr/share/polkit-1/rules.d
+cat $CWD/post-install/elogind/10-enable-elogind-power.rules > $PKG/usr/share/polkit-1/rules.d/10-enable-session-power.rules
