@@ -20,7 +20,7 @@ cd meson-build
     -Dpam=enabled \
     -Dpamconfdir="/etc/pam.d" \
     -Dmkdir meson-build
-    -Daudit=false \
+    -Daudit=disabled \
     -Dacl=enabled \
     -Dsmack=false \
     -Dutmp=true \
