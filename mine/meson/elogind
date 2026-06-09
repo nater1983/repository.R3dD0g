@@ -1,3 +1,4 @@
+rm -fr build_release
 mkdir meson-build
 cd meson-build
   CFLAGS="$SLKCFLAGS" \
