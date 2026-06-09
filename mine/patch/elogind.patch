@@ -1,1 +1,1 @@
-patch -Np1 -i $CWD/patch/elogind/elogind.nobody.nogroup.99.99.diff  || { touch ${SLACK_MINE_BUILD_DIR}/${PKGNAME}.failed ; continue ; }
+patch -Np1 -i $CWD/patch/elogind/elogind.nobody.nogroup.99.99.diff
