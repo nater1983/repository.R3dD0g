@@ -19,6 +19,8 @@ cd meson-build
     -Dnobody-group=nogroup \
     -Dpam=enabled \
     -Dpamconfdir="/etc/pam.d" \
+    -Dmkdir meson-build
+    -Daudit=false \
     -Dacl=enabled \
     -Dsmack=false \
     -Dutmp=true \
