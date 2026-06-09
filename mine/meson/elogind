@@ -1,0 +1,35 @@
+mkdir build
+cd build
+  CFLAGS="$SLKCFLAGS" \
+  CXXFLAGS="$SLKCFLAGS" \
+  meson setup ..\
+    "${MINE_BUILD_ARGS[@]}" \
+    $MINE_OPT_ARGS \
+    --libexecdir=/lib${LIBDIRSUFFIX}/elogind \
+    -Dpkgconfiglibdir=/usr/lib${LIBDIRSUFFIX}/pkgconfig \
+    -Dpamlibdir=/lib${LIBDIRSUFFIX}/security \
+    -Dudevrulesdir="/lib/udev/rules.d" \
+    -Ddocdir="/usr/doc/$PKGNAM-$VERSION" \
+    -Dhtmldir="/usr/doc/$PKGNAM-$VERSION/html" \
+    -Dmandir="/usr/man" \
+    -Dman=enabled \
+    -Dhtml=disabled \
+    -Dbashcompletiondir="/usr/share/bash-completion/completions" \
+    -Dnobody-user=nobody \
+    -Dnobody-group=nogroup \
+    -Dpam=enabled \
+    -Dpamconfdir="/etc/pam.d" \
+    -Dacl=enabled \
+    -Dsmack=false \
+    -Dutmp=true \
+    -Ddefault-hierarchy=legacy \
+    -Dcgroup-controller=elogind \
+    -Dhalt-path=/sbin/halt \
+    -Dpoweroff-path=/sbin/poweroff \
+    -Dreboot-path=/sbin/reboot \
+    -Ddefault-kill-user-processes=false \
+    -Dmode=release \
+    -Duserdb=true
+  "${NINJA:=ninja}"
+  DESTDIR=$PKG $NINJA install
+cd ..
