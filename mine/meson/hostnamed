@@ -4,7 +4,10 @@ cd build
   CXXFLAGS="$SLKCFLAGS" \
   meson setup ..\
     "${MINE_BUILD_ARGS[@]}" \
-    $MINE_OPT_ARGS
+    $MINE_OPT_ARGS \
+    -Dmachine_conf=/etc/machine-info \
+    -Dhostname_conf=/etc/HOSTNAME \
+    -Dos_conf=/etc/os-release
   "${NINJA:=ninja}"
   DESTDIR=$PKG $NINJA install
 cd ..
