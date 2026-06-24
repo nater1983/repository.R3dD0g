@@ -5,6 +5,8 @@ cd build
   meson setup ..\
     "${MINE_BUILD_ARGS[@]}" \
     $MINE_OPT_ARGS \
+    -Drc_keymap=/etc/rc.d/rc.keymap \
+    -Dlang_sh=/etc/profile.d/lang.sh \
     -Dprivileged-group=wheel \
     -Dlocale_conf=/etc/locale.conf \
     -Dvconsole_conf=/etc/vconsole.conf \
