@@ -1,0 +1,14 @@
+mkdir build
+cd build
+  CFLAGS="$SLKCFLAGS" \
+  CXXFLAGS="$SLKCFLAGS" \
+  meson setup ..\
+    "${MINE_BUILD_ARGS[@]}" \
+    $MINE_OPT_ARGS \
+    -Dprivileged-group=wheel \
+    -Dlocale_conf=/etc/locale.conf \
+    -Dvconsole_conf=/etc/vconsole.conf \
+    -Dx11_keyboard_conf=/etc/X11/xorg.conf.d/00-keyboard.conf
+  "${NINJA:=ninja}"
+  DESTDIR=$PKG $NINJA install
+cd ..
