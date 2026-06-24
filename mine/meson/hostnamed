@@ -5,6 +5,7 @@ cd build
   meson setup ..\
     "${MINE_BUILD_ARGS[@]}" \
     $MINE_OPT_ARGS \
+    -Dprivileged-group=wheel \
     -Dmachine_conf=/etc/machine-info \
     -Dhostname_conf=/etc/HOSTNAME \
     -Dos_conf=/etc/os-release
