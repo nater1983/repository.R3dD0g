@@ -30,6 +30,15 @@ require_root() {
   return 0
 }
 
+# Reject control characters (including newline/tab/CR), double-quote, and
+# backslash — mirrors rcl_machine_info_value_is_safe() in the daemon.
+validate_meta_value() {
+  local value="$1" key="$2"
+  if printf '%s' "$value" | grep -qP '[\x00-\x1f\x7f"\\]'; then
+    die "invalid characters in value for $key"
+  fi
+}
+
 get_os_release() {
   local key="$1"
   [ -f /etc/os-release ] && grep "^${key}=" /etc/os-release | cut -d= -f2- | tr -d '"'
@@ -61,7 +70,6 @@ machine_info_set() {
   fi
 
   mv "$tmp" "$MACHINE_INFO_FILE" || { rm -f "$tmp"; die "cannot update $MACHINE_INFO_FILE"; }
-  chmod 644 "$MACHINE_INFO_FILE" || die "cannot set permissions on $MACHINE_INFO_FILE"
 }
 
 # Write out a fully populated /etc/machine-info from detected values.
@@ -89,17 +97,16 @@ init_machine_info() {
   local tmp
   tmp=$(mktemp "${MACHINE_INFO_FILE}.XXXXXX") || return
 
-  cat > "$tmp" << EOF
+  cat > "$tmp" << 'EOF'
 # /etc/machine-info - see machine-info(5)
-PRETTY_HOSTNAME="${pretty}"
-ICON_NAME="${icon}"
-CHASSIS="${chassis}"
-DEPLOYMENT=""
-LOCATION=""
 EOF
+  printf 'PRETTY_HOSTNAME="%s"\n' "$pretty" >> "$tmp"
+  printf 'ICON_NAME="%s"\n'       "$icon"   >> "$tmp"
+  printf 'CHASSIS="%s"\n'         "$chassis" >> "$tmp"
+  printf 'DEPLOYMENT=""\n'                   >> "$tmp"
+  printf 'LOCATION=""\n'                     >> "$tmp"
 
   mv "$tmp" "$MACHINE_INFO_FILE" || rm -f "$tmp"
-  chmod 644 "$MACHINE_INFO_FILE"
   echo "Created $MACHINE_INFO_FILE"
 }
 
@@ -254,6 +261,7 @@ cmd_set_hostname() {
       hostname "$name" || die "cannot set transient hostname"
       ;;
     pretty)
+      validate_meta_value "$name" "PRETTY_HOSTNAME"
       machine_info_set "PRETTY_HOSTNAME" "$name"
       ;;
     all)
@@ -276,6 +284,7 @@ cmd_set_hostname() {
 cmd_set_icon_name() {
   require_root
   [ -z "${1:-}" ] && die "no icon name given"
+  validate_meta_value "$1" "ICON_NAME"
   machine_info_set "ICON_NAME" "$1"
   echo "Icon name set to '$1'."
 }
@@ -305,6 +314,7 @@ cmd_set_chassis() {
 cmd_set_deployment() {
   require_root
   [ -z "${1:-}" ] && die "no deployment environment given"
+  validate_meta_value "$1" "DEPLOYMENT"
   machine_info_set "DEPLOYMENT" "$1"
   echo "Deployment set to '$1'."
 }
@@ -316,6 +326,7 @@ cmd_set_deployment() {
 cmd_set_location() {
   require_root
   [ -z "${1:-}" ] && die "no location given"
+  validate_meta_value "$1" "LOCATION"
   machine_info_set "LOCATION" "$1"
   echo "Location set to '$1'."
 }
