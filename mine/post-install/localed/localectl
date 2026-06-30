@@ -95,7 +95,14 @@ _run_pager() {
 rcl_read_rc_keymap() {
   local file="$1"
   [ -f "$file" ] || return
-  awk '/loadkeys/ && !/^[[:space:]]*#/ && !/\]/ { print $NF; exit }' "$file"
+  # The writer quotes the keymap: /usr/bin/loadkeys "us"
+  # Extract $NF then strip surrounding double-quotes.
+  awk '/loadkeys/ && !/^[[:space:]]*#/ && !/\]/ {
+    tok = $NF
+    gsub(/^"|"$/, "", tok)
+    print tok
+    exit
+  }' "$file"
 }
 
 # Read the toggle keymap from the sidecar file.
@@ -106,11 +113,10 @@ rcl_read_rc_keymap_toggle() {
 }
 
 keyboard_value_is_safe() {
-  # Reject control characters, double-quotes, and backslashes.
-  # Mirrors rcl_keyboard_value_is_safe() in rcl-locale.c.
-  [[ "$1" =~ $'\001'-$'\037' ]] && return 1
-  [[ "$1" == *'"'* || "$1" == *'\\'* ]] && return 1
-  return 0
+  # Strict allowlist matching rcl_keyboard_value_is_safe() in rcl-locale.c:
+  # alphanumeric plus the punctuation that appears in real keymap and XKB
+  # identifiers.  Shell metacharacters are implicitly denied.
+  [[ "$1" =~ ^[A-Za-z0-9._,:+:-]+$ ]]
 }
 
 # Write (or overwrite) a Slackware rc.keymap script.
@@ -363,16 +369,16 @@ rcl_write_lang_sh() {
     # Preserve non-locale lines (comments, unrecognised exports, etc.)
     if [ -f "$file" ]; then
       while IFS= read -r line; do
-        local stripped="${line#"${line%%[![:space:]]*}"}"  # lstrip
+        stripped="${line#"${line%%[![:space:]]*}"}"  # lstrip
         # Drop old "Written by localectl" header
         [[ "$stripped" == *"Written by localectl"* ]] && continue
         # Drop blank lines (we'll re-emit at end)
         [ -z "$stripped" ] && continue
         # Drop known locale exports (rewritten below in canonical order)
         if [[ "$stripped" == export\ * ]]; then
-          local rest="${stripped#export }"
+          rest="${stripped#export }"
           rest="${rest#"${rest%%[![:space:]]*}"}"
-          local lkey="${rest%%=*}"
+          lkey="${rest%%=*}"
           locale_var_is_known "$lkey" && continue
         fi
         printf '%s\n' "$line"
@@ -385,8 +391,13 @@ rcl_write_lang_sh() {
       if [[ -v updates["$v"] ]]; then
         new_val="${updates[$v]}"
       else
-        # Preserve existing value for vars not being updated
+        # Preserve existing value for vars not being updated.
+        # Validate it against the same safe-charset used by set-locale so a
+        # manually-edited lang.sh cannot propagate unsafe values on the next write.
         cur_val=$(rcl_lang_sh_get "$file" "$v")
+        if [ -n "$cur_val" ] && ! locale_value_is_safe "$cur_val"; then
+          continue
+        fi
         new_val="$cur_val"
       fi
       [ -n "$new_val" ] && printf 'export %s="%s"\n' "$v" "$new_val"
@@ -437,17 +448,22 @@ rcl_write_x11_keyboard() {
   local tmp
   tmp=$(mktemp "${X11_KEYBOARD_FILE}.XXXXXX") || die "cannot create temp file"
 
-  cat > "$tmp" << EOF
+  # Single-quoted heredoc: no shell expansion.  Values are written via
+  # printf so shell metacharacters in layout/model/variant/options cannot
+  # be interpreted even if keyboard_value_is_safe() is somehow bypassed.
+  {
+    cat << 'HEREDOC'
 # Written by localectl - see localed(8)
 Section "InputClass"
     Identifier "system-keyboard"
     MatchIsKeyboard "on"
-    Option "XkbLayout" "${layout}"
-    Option "XkbModel" "${model}"
-    Option "XkbVariant" "${variant}"
-    Option "XkbOptions" "${options}"
-EndSection
-EOF
+HEREDOC
+    printf '    Option "XkbLayout" "%s"\n'  "$layout"
+    printf '    Option "XkbModel" "%s"\n'   "$model"
+    printf '    Option "XkbVariant" "%s"\n' "$variant"
+    printf '    Option "XkbOptions" "%s"\n' "$options"
+    echo 'EndSection'
+  } > "$tmp"
 
   mv "$tmp" "$X11_KEYBOARD_FILE" || { rm -f "$tmp"; die "cannot update $X11_KEYBOARD_FILE"; }
 }
@@ -605,7 +621,7 @@ cmd_list_keymaps() {
     | xargs -I{} basename {} \
     | sed -e 's/\.map\.gz$//' -e 's/\.map$//' \
     | sort -u \
-    | if [ -n "$filter" ]; then grep -i "$filter"; else cat; fi \
+    | if [ -n "$filter" ]; then grep -iF "$filter"; else cat; fi \
     | _run_pager
 }
 
@@ -623,7 +639,7 @@ cmd_list_locales() {
   fi
 
   if [ -n "$filter" ]; then
-    locale -a 2>/dev/null | grep -i "$filter"
+    locale -a 2>/dev/null | grep -iF "$filter"
   else
     locale -a 2>/dev/null
   fi | _run_pager
