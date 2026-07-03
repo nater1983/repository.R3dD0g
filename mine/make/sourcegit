@@ -1,1 +1,2 @@
 cp -av opt usr $PKG
+wget https://raw.githubusercontent.com/sourcegit-scm/sourcegit/refs/heads/master/{THIRD-PARTY-LICENSES.md,TRANSLATION.md,README.md,LICENSE}
