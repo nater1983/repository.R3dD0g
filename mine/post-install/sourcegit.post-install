@@ -2,5 +2,5 @@ mkdir $PKG/usr/bin
 cp -av $CWD/post-install/sourcegit/sourcegit $PKG/usr/bin
 chmod +x $PKG/usr/bin/sourcegit
 mkdir -p $PKG/usr/share/pixmaps
-cp -av com.sourcegit_scm.SourceGit.png $/usr/share/pixmaps
+cp -av com.sourcegit_scm.SourceGit.png $PKG/usr/share/pixmaps
 sed -i 's/^Icon=sourcegit$/Icon=com.sourcegit_scm.SourceGit/' $PKG/usr/share/applications/*.desktop
