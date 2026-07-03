@@ -1,0 +1,2 @@
+#!/bin/bash
+export LD_LIBRARY_PATH=/opt/sourcegit:${LD_LIBRARY_PATH} && exec /opt/sourcegit/"sourcegit"
