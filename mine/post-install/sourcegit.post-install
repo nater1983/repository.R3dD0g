@@ -1,0 +1,3 @@
+mkdir $PKG/usr/bin
+cp -av $CWD/post-install/sourcegit/sourcegit $PKG/usr/bin
+chmod +x $PKG/usr/bin/sourcegit
