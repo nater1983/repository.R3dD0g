@@ -71,29 +71,56 @@ extract_archive() {
     return 0
   fi
 
-  if [[ "$src_archive" == *.AppImage ]]; then
-    # AppImages are self-extracting ELF binaries with an embedded squashfs.
-    # --appimage-extract works without needing FUSE/root and is supported
-    # by both type1 and type2 AppImages.
-    local abs_archive
-    abs_archive=$(readlink -f "$src_archive")
-    chmod +x "$abs_archive" 2>/dev/null
+if [[ "$src_archive" == *.AppImage ]]; then
+    local abs_archive tempdir
 
-    local tempdir=$(mktemp -d)
-    ( cd "$tempdir" && "$abs_archive" --appimage-extract >/dev/null 2>&1 )
+    abs_archive=$(readlink -f "$src_archive")
+    tempdir=$(mktemp -d)
+
+    #
+    # Preferred: extract the embedded SquashFS directly.
+    # This avoids executing the AppImage entirely and works
+    # even on noexec filesystems.
+    #
+    if command -v unsquashfs >/dev/null 2>&1; then
+        if unsquashfs -d "$tempdir/squashfs-root" "$abs_archive"; then
+            mkdir -p "$(pkgbase "$1")"
+            mv "$tempdir/squashfs-root"/* "$(pkgbase "$1")"/
+            rm -rf "$tempdir"
+            return 0
+        else
+            echo "** unsquashfs failed for $(basename "$src_archive")"
+        fi
+    fi
+
+    #
+    # Fallback: execute the AppImage runtime.
+    #
+    chmod +x "$abs_archive"
+
+    (
+        cd "$tempdir" &&
+        "$abs_archive" --appimage-extract
+    )
+
+    if [ $? -ne 0 ]; then
+        echo "** AppImage runtime extraction failed for $(basename "$src_archive")"
+        rm -rf "$tempdir"
+        return 1
+    fi
 
     if [ ! -d "$tempdir/squashfs-root" ]; then
-      echo "** AppImage extraction failed for $(basename "$src_archive")"
-      rm -rf "$tempdir"
-      return 1
+        echo "** squashfs-root was not created by AppImage"
+        rm -rf "$tempdir"
+        return 1
     fi
 
     mkdir -p "$(pkgbase "$1")"
-    find "$tempdir/squashfs-root" -mindepth 1 -maxdepth 1 -exec mv -t "$(pkgbase "$1")" -- {} +
+    mv "$tempdir/squashfs-root"/* "$(pkgbase "$1")"/
 
     rm -rf "$tempdir"
     return 0
-  fi
+fi
 
   # Regular tar-based logic
   if [ $(tar -tf $src_archive | grep -o '^[^/]\+' | sort -u | wc -l) -eq 1 ]; then
