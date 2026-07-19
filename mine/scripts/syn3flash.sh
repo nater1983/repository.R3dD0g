@@ -8,8 +8,8 @@ CWD=$(pwd)
 CLEANUP="YES"
 FORCE="NO"
 MYDIR="${CWD}/src"
-GNOMEGITURI="https://github.com/sonnyp/"
-DEFMODS="Commit"
+GNOMEGITURI="https://github.com/bigunclemax/"
+DEFMODS="sync3flash"
 SHRINK="YES"
 TOPDIR=$(cd "$(dirname "$0")"; pwd)
 
