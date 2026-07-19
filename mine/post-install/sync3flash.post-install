@@ -1,2 +1,3 @@
 install -vDm 0755 cmake-build/sync3flash -t $PKG/usr/bin
+mkdir -p $PKG/usr/share/doc/sync3flash
 tar --strip-components=1 -xzf $CWD/post-install/sync3flash/sync3flash.tar.gz -C $PKG/usr/share/doc/sync3flash
