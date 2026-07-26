@@ -1,3 +1,6 @@
 cp -av usr $PKG
 rm -fr $PKG/usr/{lib,plugins,translations,share/doc,bin/qt.conf}
+wget https://raw.githubusercontent.com/azahar-emu/azahar/refs/heads/master/dist/org.azahar_emu.Azahar.xml
+mkdir -p $PKG/usr/share/metainfo
+mv org.azahar_emu.Azahar.xml $PKG/usr/share/metainfo
 #wget https://raw.githubusercontent.com/sourcegit-scm/sourcegit/refs/heads/master/{THIRD-PARTY-LICENSES.md,TRANSLATION.md,README.md,LICENSE}
