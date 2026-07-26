@@ -1,3 +1,3 @@
 cp -av usr $PKG
-rm -fr $PKG/usr/{lib,plugins,translations}
+rm -fr $PKG/usr/{lib,plugins,translations,share/doc}
 #wget https://raw.githubusercontent.com/sourcegit-scm/sourcegit/refs/heads/master/{THIRD-PARTY-LICENSES.md,TRANSLATION.md,README.md,LICENSE}
