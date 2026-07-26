@@ -1,0 +1,19 @@
+# HOW TO EDIT THIS FILE:
+# The "handy ruler" below makes it easier to edit a package description.
+# Line up the first '|' above the ':' following the base package name, and
+# the '|' on the right side marks the last column you can put a character in.
+# You must make exactly 11 lines for the formatting to be correct.  It's also
+# customary to leave one space after the ':' except on otherwise blank lines.
+
+      |-----handy-ruler------------------------------------------------------|
+azahar: azahar ( 3ds Emulator )
+azahar:
+azahar: Azahar is an open-source 3DS emulator project based on Citra.
+azahar:
+azahar: Citra/Azahar are an open-source Nintendo 3DS emulator/debugger
+azahar: written in C++. It is written with portability in mind, with builds
+azahar: actively maintained for Windows, Linux and OS X. Citra only emulates
+azahar: a subset of 3DS hardware, and therefore is generally only useful for
+azahar: running/debugging homebrew applications.
+azahar:
+azahar: Homepage: https://github.com/azahar-emu/azahar
