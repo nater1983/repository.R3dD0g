@@ -1,0 +1,15 @@
+#!/bin/sh
+case "$(echo -e "Shutdown\nRestart\nLogout\nSuspend\nHibernate\nLock" | dmenu \
+    -nb "${COLOR_BACKGROUND:-#151515}" \
+    -nf "${COLOR_DEFAULT:-#aaaaaa}" \
+    -sf "${COLOR_HIGHLIGHT:-#589cc5}" \
+    -sb "#1a1a1a" \
+    -b -i -p \
+    "Power:" -l 6)" in
+        Shutdown) exec loginctl poweroff;;
+        Restart) exec loginctl reboot;;
+        Logout) exec loginctl kill-session $XDG_SESSION_ID;;
+        Suspend) exec loginctl suspend;;
+	Hibernate) exec loginctl hibernate;;
+        Lock) exec slock;;
+esac
