@@ -1,0 +1,11 @@
+# The dwm doinst.sh script left rofi themes
+# in the location /usr/share/rofi/themes
+#
+# The themes will remain after package removal, so clean
+# them up:
+
+ROFIDIR="/usr/share/rofi"
+if [ -e "$ROFIDIR" ]; then
+  rm -f "$ROFI/themes/dwm.rasi"
+  rm -rf "$ROFIDIR"
+fi
