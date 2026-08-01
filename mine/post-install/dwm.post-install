@@ -1,3 +1,4 @@
+tar xvf $CWD/post-install/dwm/dwm-apps.tar.gz
 install -vDm 0755 $CWD/post-install/dwm/dwmcpu -t $PKG/usr/bin 
 install -vDm 0755 $CWD/post-install/dwm/dwmmemory -t $PKG/usr/bin
 install -vDm 0755 $CWD/post-install/dwm/dwmnet -t $PKG/usr/bin
