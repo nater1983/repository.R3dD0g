@@ -1,0 +1,20 @@
+#!/bin/sh
+
+# Show wifi ðŸ“¶ and percent strength or ðŸ“¡ if none.
+# Show ðŸŒ if connected to ethernet or âŽ if none.
+
+case $BLOCK_BUTTON in
+	1) setsid "$TERMINAL" -e nmtui & ;;
+	3) notify-send "ðŸŒ Internet module" "\- Click to connect
+ðŸ“¡: no wifi connection
+ðŸ“¶: wifi connection with quality
+âŽ: no ethernet
+ðŸŒ: ethernet working
+" ;;
+esac
+
+grep -q "down" /sys/class/net/w*/operstate && wifiicon="ðŸ“¡" ||
+	wifiicon="$(grep "^\s*w" /proc/net/wireless | awk '{ print "ðŸ“¶", int($3 * 100 / 70) "%" }')"
+
+printf "%s %s\n" "$wifiicon" "$(sed "s/down/âŽ/;s/up/ðŸŒ/" /sys/class/net/e*/operstate)"
+
