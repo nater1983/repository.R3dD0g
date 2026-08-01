@@ -17,4 +17,3 @@ grep -q "down" /sys/class/net/w*/operstate && wifiicon="ðŸ“¡" ||
 	wifiicon="$(grep "^\s*w" /proc/net/wireless | awk '{ print "ðŸ“¶", int($3 * 100 / 70) "%" }')"
 
 printf "%s %s\n" "$wifiicon" "$(sed "s/down/âŽ/;s/up/ðŸŒ/" /sys/class/net/e*/operstate)"
-
