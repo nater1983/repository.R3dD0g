@@ -1,0 +1,28 @@
+sed -i \
+  -e "s,-D_BSD_SOURCE,-D_DEFAULT_SOURCE," \
+  -e "s,-Os,$SLKCFLAGS," \
+  config.mk
+
+make \
+  OPTS="$SLKCFLAGS" \
+  PREFIX=/usr \
+  MANPREFIX=/usr/man \
+  X11INC=/usr/include \
+  X11LIB=/usr/lib${LIBDIRSUFFIX}/X11
+
+make install \
+  OPTS="$SLKCFLAGS" \
+  PREFIX=/usr \
+  MANPREFIX=/usr/man \
+  X11INC=/usr/include \
+  X11LIB=/usr/lib${LIBDIRSUFFIX}/X11 \
+  DESTDIR=$PKG
+
+  gcc $CWD/pre-install/dwm/dwm-setstatus.c -lX11 -o dwm-setstatus
+  install -vDm 0755 $CWD/pre-install/dwm/dwm-setstatus -t $PKG/usr/bin
+  
+  tar xvf $CWD/pre-install/dwm/dwmblocks.tar.gz
+  cd dwmblocks
+  make PREFIX=/usr
+  make install PREFIX=/usr \
+               DESTDIR=$PKG
