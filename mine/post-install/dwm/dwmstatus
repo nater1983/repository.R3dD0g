@@ -1,0 +1,17 @@
+#!/bin/bash
+
+#echo "Readjusting my Montiors: "
+#xrandr --output DisplayPort-1-3 --auto --below HDMI-A-0
+#sleep 5
+#echo "Starting Audio: "
+#pulseaudio --start
+echo "Setting my Status bar: "
+while true
+do
+	LOCALTIME=$(date +%Z\=%Y-%m-%dT%H:%M)
+	WEATHER=$(/usr/bin/dwmweather)
+	CPU=$(/usr/bin/dwmcpu 2>/dev/null )
+	NETSTATUS=$(/usr/bin/dwmnet  2>/dev/null)
+	xsetroot -name "| $NETSTATUS | $CPU | $LOCALTIME $WEATHER"
+	sleep 20s
+done &
