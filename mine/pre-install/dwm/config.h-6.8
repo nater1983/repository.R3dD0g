@@ -69,11 +69,11 @@ static const Layout layouts[] = {
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
 /* commands */
-static const char *dmenucmd[] = { "dmenu_run", "-fn", dmenumon, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, NULL };
-/*static const char *dmenucmd[] = { "rofi_run", NULL };*/
+/*static const char *dmenucmd[] = { "dmenu_run", "-fn", dmenumon, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, NULL };*/
+static const char *dmenucmd[] = { "rofi -show drun", NULL };
 static const char *termcmd[]  = { "st", NULL };
 static const char *screenprintcmd[]  = { "scrot", NULL };
-static const char *webcmd[]  = { "google-chrome-stable", NULL };
+static const char *webcmd[]  = { "firefox", NULL };
 static const char *statuscmd[]  = { "/usr/bin/dwmstatus", NULL };
 static const char *powermenu[] = { "/usr/bin/powermenu", NULL };
 static const char *lockcmd[] = { "slock", NULL };
