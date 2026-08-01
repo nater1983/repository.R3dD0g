@@ -1,0 +1,16 @@
+install -vDm 0755 $CWD/post-install/dwm/dwmcpu -t $PKG/usr/bin 
+install -vDm 0755 $CWD/post-install/dwm/dwmmemory -t $PKG/usr/bin
+install -vDm 0755 $CWD/post-install/dwm/dwmnet -t $PKG/usr/bin
+install -vDm 0755 $CWD/post-install/dwm/dwmdisk -t $PKG/usr/bin
+install -vDm 0755 $CWD/post-install/dwm/dwmclock -t $PKG/usr/bin
+install -vDm 0755 $CWD/post-install/dwm/dwmlayout -t $PKG/usr/bin
+install -vDm 0755 $CWD/post-install/dwm/dwmstatus -t $PKG/usr/bin
+install -vDm 0755 $CWD/post-install/dwm/dwmweather -t $PKG/usr/bin
+install -vDm 0755 $CWD/post-install/dwm/powermenu -t $PKG/usr/bin
+install -vDm 0755 $CWD/post-install/dwm/xinitrc.dwm -t $PKG/etc/X11/xinit/
+install -vDm 0644 $CWD/post-install/dwm/dwm.desktop -t $PKG/usr/share/xsessions
+install -vDm 0644 $CWD/post-install/dwm/dwm.rasi.new -t $PKG/usr/share/rofi/themes
+install -vDm 0644 $CWD/post-install/dwm/dwm.png -t $PKG/usr/share/pixmaps
+mv $PKG/usr/bin/dwm $PKG/usr/bin/dwm-bin
+strip --strip-unneeded $PKG/usr/bin/$PRGNAM-bin
+install -vDm 0755 $CWD/post-install/dwm/dwm -t $PKG/usr/bin
