@@ -1,0 +1,31 @@
+#!/bin/sh
+# dwmcpu ï¿½.. show CPU temperature and handle dwmblocks clicks
+
+# Handle clicks only when called from dwmblocks
+if [ -n "$BLOCK_BUTTON" ]; then
+    case $BLOCK_BUTTON in
+        1) notify-send "ï¿½.. CPU hogs" "$(ps axch -o cmd:15,%cpu --sort=-%cpu | head)\n(100% per core)" ;;
+        2) setsid "$TERMINAL" -e htop & ;;
+        3) notify-send "ï¿½.. CPU module" "- Shows CPU temperature.
+- Left click: CPU hogs
+- Middle click: htop" ;;
+    esac
+    exit 0
+fi
+
+# Try to detect the CPU temp from various sensor labels
+temp=$(
+    sensors 2>/dev/null | awk '
+        /cpu_thermal/ && /temp1:/ {print $2; found=1; exit}
+        /Core 0/ {print $3; found=1; exit}
+        /Tctl/ {print $2; found=1; exit}
+        /Package id 0/ {print $3; found=1; exit}
+        /temp1:/ && !found {print $2; exit}
+    '
+)
+
+# Fallback if no reading found
+[ -n "$temp" ] || temp="N/A"
+
+# Output for dwmblocks or xsetroot
+printf ""ðŸŒ¡" %s\n" "$temp"
