@@ -1,0 +1,64 @@
+#!/bin/sh
+
+# Displays today's precipitation chance (â˜”) and daily low (â„ï¸) and high (ðŸ”¥).
+# Usually intended for a statusbar.
+
+LOCATION="Princeton,Texas"
+LAT=33.1801
+LON=-96.498
+CACHE="/tmp/weatherreport"
+
+# Fetch from wttr.in, or fallback to Open-Meteo (Fahrenheit)
+getforecast() {
+    if ping -q -c 1 1.1.1.1 >/dev/null 2>&1; then
+        if curl -sf "https://wttr.in/$LOCATION" > "$CACHE"; then
+            return 0
+        else
+            echo "âš ï¸ wttr.in unavailable, using Open-Meteo fallback..." >&2
+            curl -sf "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&timezone=auto" \
+                | jq -r '"Precip: \(.daily.precipitation_probability_max[0])%  Low: \(.daily.temperature_2m_min[0])Â°F  High: \(.daily.temperature_2m_max[0])Â°F"' \
+                > "$CACHE"
+        fi
+    else
+        exit 1
+    fi
+}
+
+# Parse weather data (works for both wttr.in or fallback text)
+showweather() {
+    if grep -q "Precip:" "$CACHE"; then
+        # Fallback text from Open-Meteo
+        cat "$CACHE"
+    else
+        # wttr.in format parsing
+        printf "%s" "$(sed '16q;d' "$CACHE" |
+            grep -wo "[0-9]*%" | sort -rn | sed "s/^/â˜” /g;1q" | tr -d '\n')"
+        sed '13q;d' "$CACHE" |
+            grep -o "m\\([-+]\\)*[0-9]\\+" |
+            sort -n -t 'm' -k 2n |
+            sed -e 1b -e '$!d' |
+            tr '\n|m' ' ' |
+            awk '{print " â„ï¸",$1 "Â°","ðŸ”¥",$2 "Â°"}'
+    fi
+}
+
+# Only fetch new forecast if missing or outdated
+if [ ! -f "$CACHE" ] || [ "$(date -r "$CACHE" '+%Y-%m-%d')" != "$(date '+%Y-%m-%d')" ]; then
+    getforecast
+fi
+
+# Handle mouse actions (for i3blocks/dwmblocks)
+case $BLOCK_BUTTON in
+    1) setsid "$TERMINAL" -e less -Srf "$CACHE" & ;;
+    2) getforecast && showweather ;;
+    3) notify-send "ðŸŒ¤ Weather module" "- Left click: full forecast
+- Middle click: update forecast
+â˜”: Chance of rain/snow
+â„ï¸: Daily low
+ðŸ”¥: Daily high" ;;
+esac
+
+# Refresh if outdated
+[ "$(stat -c %y "$CACHE" 2>/dev/null | cut -d' ' -f1)" = "$(date '+%Y-%m-%d')" ] || getforecast
+
+showweather
