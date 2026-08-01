@@ -12,5 +12,5 @@ install -vDm 0644 $CWD/post-install/dwm/dwm.desktop -t $PKG/usr/share/xsessions
 install -vDm 0644 $CWD/post-install/dwm/dwm.rasi.new -t $PKG/usr/share/rofi/themes
 install -vDm 0644 $CWD/post-install/dwm/dwm.png -t $PKG/usr/share/pixmaps
 mv $PKG/usr/bin/dwm $PKG/usr/bin/dwm-bin
-strip --strip-unneeded $PKG/usr/bin/$PRGNAM-bin
+strip --strip-unneeded $PKG/usr/bin/dwm-bin
 install -vDm 0755 $CWD/post-install/dwm/dwm -t $PKG/usr/bin
