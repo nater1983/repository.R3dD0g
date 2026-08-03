@@ -101,6 +101,12 @@ case ${chosen} in
 			betterlockscreen -l
 		elif [[ -x '/usr/bin/i3lock' ]]; then
 			i3lock
+		elif [[ -x '/usr/bin/xscreensaver-command' ]]; then
+			if ! pgrep -x xscreensaver >/dev/null; then
+        		xscreensaver -no-splash &
+        		sleep 1
+    		fi
+			xscreensaver-command -lock
 		elif [[ -x '/usr/bin/slock' ]]; then
 			slock
 		fi
