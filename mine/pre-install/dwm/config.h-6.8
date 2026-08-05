@@ -71,10 +71,10 @@ static const Layout layouts[] = {
 /* commands */
 /*static const char *dmenucmd[] = { "dmenu_run", "-fn", dmenumon, "-nb", normbgcolor, "-nf", normfgcolor, "-sb", selbgcolor, "-sf", selfgcolor, NULL };*/
 static const char *dmenucmd[] = { "rofi", "-show", "drun", NULL };
-static const char *termcmd[]  = { "st", NULL };
-static const char *screenprintcmd[]  = { "scrot", NULL };
-static const char *bluetoothcmd[]  = { "firefox", NULL };
-static const char *screenprintcmd[]  = { "/usr/bin/bluetooth_launcher.sh", NULL };
+static const char *termcmd[]  = { "alacritty", NULL };
+static const char *screenprintcmd[]  = { "screenshot", NULL };
+-static const char *webcmd[]  = { "firefox", NULL };
+static const char *bluetoothcmd[]  = { "/usr/bin/bluetooth_launcher.sh", NULL };
 static const char *wificmd[]  = { "/usr/bin/wifi_launcher.sh", NULL };
 static const char *statuscmd[]  = { "/usr/bin/dwmstatus", NULL };
 static const char *powermenu[] = { "/usr/bin/powermenu", NULL };
