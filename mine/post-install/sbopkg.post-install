@@ -1,4 +1,4 @@
-install -vDm 0644 $CWD/post-install/sbopkg.conf -t $PKG/etc/sbopkg
+install -vDm 0644 $CWD/post-install/sbopkg/sbopkg.conf -t $PKG/etc/sbopkg
 mv $PKG/etc/sbopkg/sbopkg.conf $PKG/etc/sbopkg/sbopkg.conf.new
 
-install -vDm 0644 $CWD/post-install/60-SBo-aarch64.repo -t $PKG/etc/sbopkg/repos.d
+install -vDm 0644 $CWD/post-install/sbopkg/60-SBo-aarch64.repo -t $PKG/etc/sbopkg/repos.d
