@@ -1,0 +1,38 @@
+mkdir -p $PKG/etc/sbopkg $PKG/etc/logrotate.d/
+cp -a src/etc/sbopkg/* $PKG/etc/sbopkg
+cp -a src/etc/logrotate.d/sbopkg $PKG/etc/logrotate.d/
+mv $PKG/etc/sbopkg/sbopkg.conf $PKG/etc/sbopkg/sbopkg.conf.new
+mv $PKG/etc/sbopkg/blacklist $PKG/etc/sbopkg/blacklist.new
+
+mkdir -p $PKG/usr/sbin
+cp src/usr/sbin/* $PKG/usr/sbin
+
+mkdir -p $PKG/usr/libexec/$PKGNAME
+cp -ar src/usr/libexec/$PKGNAME/* $PKG/usr/libexec/$PKGNAME
+
+mkdir -p $PKG/usr/man
+cp -a src/usr/man/* $PKG/usr/man
+
+MONTH="$(date +%B)"
+YEAR="$(date +%Y)"
+UTCDATE="$(date -u +"%F %R UTC")"
+size="about 457MB"
+SWVER="15.0"
+sed -i "
+    s/sbopkg-SVN/sbopkg-$MODULAR_PACKAGE_VERSION/
+    s/xxxDATExxx/$MONTH $YEAR/
+    s/xxxUTCDATExxx/$UTCDATE/
+    s/xxxSIZExxx/$size/
+    s/xxxVERSIONxxx/$MODULAR_PACKAGE_VERSION/
+    s/xxxSWVERxxx/$SWVER/
+    " $PKG/usr/man/man5/sbopkg.conf.5 $PKG/usr/man/man8/sbopkg.8 $PKG/usr/man/man8/sqg.8 \
+      $PKG/usr/man/es/man5/sbopkg.conf.5 $PKG/usr/man/es/man8/sbopkg.8 \
+      $PKG/usr/man/fr/man5/sbopkg.conf.5 $PKG/usr/man/fr/man8/sbopkg.8
+
+mkdir -p $PKG/usr/doc/$PKGNAME-$MODULAR_PACKAGE_VERSION
+cp -a src/usr/doc/* $PKG/usr/doc/$PKGNAME-$MODULAR_PACKAGE_VERSION
+ln -s /usr/doc/$PKGNAME-$MODULAR_PACKAGE_VERSION/README-repos $PKG/etc/$PRGNAM/repos.d/README
+ln -s /usr/doc/$PKGNAME-$MODULAR_PACKAGE_VERSION/README-renames \
+    $PKG/etc/$PRGNAM/renames.d/README
+sed -i "s/xxxSWVERxxx/$SWVER/g" $PKG/usr/doc/$PKGNAME-$MODULAR_PACKAGE_VERSION/README-repos
+rm -f $PKG/usr/doc/$PKGNAME-$MODULAR_PACKAGE_VERSION/*.tmp
