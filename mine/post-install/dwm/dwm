@@ -67,6 +67,13 @@ elif [ $(which xterm) ]; then
     xterm -ls -T Failsafe -geometry 80x24-0-0
 fi
 
+# locking X session (or failsafe locking)
+if [ $(which xscreensaver) ]; then
+    xscreensaver &
+elif [ $(which slock) ]; then
+    slock
+fi
+
 # Activate dbus variables
 dbus-update-activation-environment --all
 dbus-launch $SSH_AGENT dwm-bin
