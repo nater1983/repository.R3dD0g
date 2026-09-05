@@ -67,7 +67,7 @@ elif [ $(which xterm) ]; then
     xterm -ls -T Failsafe -geometry 80x24-0-0
 fi
 
-# locking X session (or failsafe locking)
+# locking X session with screensaver (or failsafe X session locking)
 if [ $(which xscreensaver) ]; then
     xscreensaver &
 elif [ $(which slock) ]; then
