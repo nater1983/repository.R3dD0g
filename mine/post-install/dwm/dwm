@@ -45,6 +45,9 @@ elif [ $(which unclutter) ]; then
     unclutter &
 fi
 
+# polkit authentication agent
+/usr/libexec/polkit-gnome-authentication-agent-1 &
+
 # source machine- and uname-specific xinitrcs
 xinitcfg="$HOME/.config/xinit"
 test -f "$xinitcfg/u/$(uname)"       && . "$xinitcfg/u/$(uname)"
@@ -72,7 +75,7 @@ fi
 
 # locking X session with screensaver (or failsafe X session locking)
 if [ $(which xscreensaver) ]; then
-    xscreensaver &
+    xscreensaver -no-splash &>/dev/null &
 elif [ $(which slock) ]; then
     slock
 fi
