@@ -32,6 +32,9 @@ export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+export XAUTHORITY="$HOME/.Xauthority"
+[ -f "$XAUTHORITY" ] || touch "$XAUTHORITY"
+xauth generate "$DISPLAY" . trusted 2>/dev/null
 
 test $(which xsetroot)  && xsetroot -solid midnightblue &
 test $(which gpg-agent) && eval $(gpg-agent --daemon)
