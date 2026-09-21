@@ -1,0 +1,31 @@
+#!/bin/sh
+
+# lrfs: used in dwm to replace quit key binding behaviour.
+
+title="[l]ogout [r]eboot [f]irmware [s]hutdown"
+options="l\nr\nf\ns"
+
+dwm=$( ps -o pid,cmd ax | awk '/dwm/{ if ($2 == "dwm") print $1 }' )
+
+action() {
+    answer="$( echo -e $1 | dmenu -i -p "$2" -fn "System-ui Regular:size=12" -nb "#1d2021" -nf "#d79921" -sb "#d79921" -sf "#1d2021" )"
+}
+
+action "$options" "$title"
+
+case $answer in
+    "l")
+        [[ ! -z "$dwm" ]] && kill -s TERM $dwm
+        ;;
+    "r")
+        systemctl reboot
+        ;;
+    "f")
+        systemctl reboot --firmware-setup
+        ;;
+    "s")
+        systemctl poweroff
+        ;;
+esac
+
+exit 0

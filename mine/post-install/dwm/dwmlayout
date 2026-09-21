@@ -2,5 +2,7 @@
 
 dte=`setxkbmap -query | grep layout | cut -d':' -f2 | sed -e 's/^[ \t]*//'`
 #printf " %s\n" "$dte |"
-icon="ï„œ"
+icon=""
 printf "^c#FFFFFF^ %s %s\n" "$icon" "$dte |"
+
+

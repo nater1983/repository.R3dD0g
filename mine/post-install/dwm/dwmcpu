@@ -1,12 +1,12 @@
 #!/bin/sh
-# dwmcpu ï¿½.. show CPU temperature and handle dwmblocks clicks
+# dwmcpu �.. show CPU temperature and handle dwmblocks clicks
 
 # Handle clicks only when called from dwmblocks
 if [ -n "$BLOCK_BUTTON" ]; then
     case $BLOCK_BUTTON in
-        1) notify-send "ï¿½.. CPU hogs" "$(ps axch -o cmd:15,%cpu --sort=-%cpu | head)\n(100% per core)" ;;
+        1) notify-send "�.. CPU hogs" "$(ps axch -o cmd:15,%cpu --sort=-%cpu | head)\n(100% per core)" ;;
         2) setsid "$TERMINAL" -e htop & ;;
-        3) notify-send "ï¿½.. CPU module" "- Shows CPU temperature.
+        3) notify-send "�.. CPU module" "- Shows CPU temperature.
 - Left click: CPU hogs
 - Middle click: htop" ;;
     esac
@@ -28,4 +28,4 @@ temp=$(
 [ -n "$temp" ] || temp="N/A"
 
 # Output for dwmblocks or xsetroot
-printf ""ðŸŒ¡" %s\n" "$temp"
+printf ""🌡" %s\n" "$temp"
