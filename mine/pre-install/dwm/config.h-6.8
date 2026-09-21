@@ -31,7 +31,7 @@ static const char *colors[][3] = {
 };
 
 /* tagging */
-static const char *tags[] = { "ï„ ", "ï‰¨", "ï‡‹", "ï¯", "ï§", "ï‡", "ïŠ†", "ï‡ˆ", "ïƒ¸" };
+static const char *tags[] = { "", "", "", "", "", "", "", "", "" };
 
 static const Rule rules[] = {
 	/* xprop(1):
@@ -73,7 +73,7 @@ static const Layout layouts[] = {
 static const char *dmenucmd[] = { "rofi", "-show", "drun", NULL };
 static const char *termcmd[]  = { "alacritty", NULL };
 static const char *screenprintcmd[]  = { "screenshot", NULL };
--static const char *webcmd[]  = { "firefox", NULL };
+static const char *webcmd[]  = { "firefox", NULL };
 static const char *bluetoothcmd[]  = { "/usr/bin/bluetooth_launcher.sh", NULL };
 static const char *wificmd[]  = { "/usr/bin/wifi_launcher.sh", NULL };
 static const char *statuscmd[]  = { "/usr/bin/dwmstatus", NULL };
