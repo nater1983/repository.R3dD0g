@@ -10,7 +10,6 @@ install -vDm 0755 $CWD/post-install/dwm/dwmweather -t $PKG/usr/bin
 install -vDm 0755 $CWD/post-install/dwm/powermenu -t $PKG/usr/bin
 install -vDm 0755 $CWD/post-install/dwm/xinitrc.dwm -t $PKG/etc/X11/xinit/
 install -vDm 0644 $CWD/post-install/dwm/dwm.desktop -t $PKG/usr/share/xsessions
-install -vDm 0644 $CWD/post-install/dwm/dwm.rasi.new -t $PKG/usr/share/rofi/themes
 install -vDm 0644 $CWD/post-install/dwm/dwm.png -t $PKG/usr/share/pixmaps
 mv $PKG/usr/bin/dwm $PKG/usr/bin/dwm-bin
 strip --strip-unneeded $PKG/usr/bin/dwm-bin
