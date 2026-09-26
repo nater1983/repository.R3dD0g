@@ -12,8 +12,8 @@ bwbar: bwbar is a small program, written by H. Peter Anvin, that generates
 bwbar: a text and a graphical readout of the current bandwidth use.
 bwbar: It is used, among others, at http://www.kernel.org/.
 bwbar:
-bwbar:
-bwbar:
-bwbar:
 bwbar: See also: http://www.kernel.org/pub/software/web/bwbar/
+bwbar:
+bwbar:
+bwbar:
 bwbar:
