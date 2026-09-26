@@ -1,0 +1,18 @@
+# Make it compile:
+sed -i '1,1i#include <zlib.h>' bwbar.c
+sed -i 's,png_ptr->jmpbuf,png_jmpbuf(png_ptr),' bwbar.c
+
+if [ ! -r configure ]; then
+  if [ -x ./autogen.sh ]; then
+    NOCONFIGURE=1 ./autogen.sh
+  else
+    autoreconf -vif
+  fi
+fi
+
+CFLAGS="$SLKCFLAGS" \
+CXXFLAGS="$SLKCFLAGS" \
+./configure \
+    "${MINE_MAKE_ARGS[@]}"
+make
+make install DESTDIR=$PKG
