@@ -15,4 +15,4 @@ CXXFLAGS="$SLKCFLAGS" \
 ./configure \
     "${MINE_MAKE_ARGS[@]}"
 make
-make install DESTDIR=$PKG
+install -D -m755 bwbar $PKG/usr/bin/bwbar
