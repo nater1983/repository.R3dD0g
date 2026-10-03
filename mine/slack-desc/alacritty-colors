@@ -1,0 +1,19 @@
+# HOW TO EDIT THIS FILE:
+# The "handy ruler" below makes it easier to edit a package description.
+# Line up the first '|' above the ':' following the base package name, and
+# the '|' on the right side marks the last column you can put a character in.
+# You must make exactly 11 lines for the formatting to be correct. It's also
+# customary to leave one space after the ':' except on otherwise blank lines.
+
+                |-----handy-ruler------------------------------------------------------|
+alacritty-colors: alacritty-colors (Color theme manager and generator for Alacritty)
+alacritty-colors:
+alacritty-colors: An interactive Alacritty theme manager with comprehensive theme
+alacritty-colors: editing, font management, and seamless configuration capabilities.
+alacritty-colors: A command-line tool for managing Alacritty terminal themes, offering
+alacritty-colors: automatic downloads, custom theme generation, font configuration,
+alacritty-colors: and configuration management features.
+alacritty-colors:
+alacritty-colors: Homepage: https://github.com/Vitruves/alacritty-colors
+alacritty-colors:
+alacritty-colors:
