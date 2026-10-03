@@ -1,1 +1,2 @@
-make build
+#make build
+make GO=/usr/lib64/go1.27.1/go/bin/go build
