@@ -4,3 +4,5 @@
 /usr/lib/libbluray.so.2
 /usr/lib/libtag.so.1
 /usr/lib/libspdlog.so.1.14
+/usr/lib/libplist-2.0.so.4
+/usr/lib/libplist++-2.0.so.4
