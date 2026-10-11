@@ -1,7 +1,7 @@
 cp -av usr $PKG
 rm -fr $PKG/usr/{lib,plugins,translations,share/doc,bin/qt.conf,share/pixmaps}
 rm -fr $PKG/usr/share/icons/hicolor/{128x128,16x16,256x256,32x32,64x64}/
-rm -fr $PKG/usr/share/icons/hicolor
+rm -fr $PKG/usr/share/icons
 install -vDm 0644 $CWD/post-install/azahar/azahar.png $PKG/usr/share/pixmaps/org.azahar_emu.Azahar.png
 wget https://raw.githubusercontent.com/azahar-emu/azahar/refs/heads/master/dist/org.azahar_emu.Azahar.xml
 mkdir -p $PKG/usr/share/metainfo
