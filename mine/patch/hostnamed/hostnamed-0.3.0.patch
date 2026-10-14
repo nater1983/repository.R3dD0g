@@ -1,0 +1,752 @@
+diff --git a/BUGS-NEWS b/BUGS-NEWS
+index af9e301..1d50070 100644
+--- a/BUGS-NEWS
++++ b/BUGS-NEWS
+@@ -2,7 +2,36 @@ NEWS
+ ====
+ 
+ This file summarizes user-visible changes to hostnamed, most recent first.
+-See CHANGELOG.md for the full commit-level history.
++See the NEWS file for the full changelog.
++
++0.3.0 (2026-10-14)
++------------------
++* BUILD CHANGE: polkit is now required. The -Dpolkit option is gone;
++  remove it from any meson setup command line or packaging script.
++* Hostname validation is stricter (RFC 1123): labels over 63
++  characters, empty labels such as "a..b", and labels beginning or
++  ending with "-" are now rejected.
++* GetProductUUID now returns 16 raw bytes like systemd-hostnamed
++  (it previously returned the 36 ASCII characters of the textual
++  UUID). Clients that parsed the old form must be updated. It now
++  returns an error instead of an empty array when no UUID exists.
++* Fixed spurious PropertiesChanged signals for Chassis and IconName
++  on every file change.
++* IconName is derived from the effective chassis, so a CHASSIS value
++  in /etc/machine-info now selects the matching icon.
++* DefaultHostname is now populated and HostnameSource can report
++  "default".
++* SetPrettyHostname only shortens a value to its first label when the
++  value is a valid hostname; free-form labels containing dots are
++  kept intact.
++* Hardware information falls back to the device tree on systems
++  without DMI (HardwareModel, HardwareVendor, Chassis), and
++  HardwareVendor prefers sys_vendor over board_vendor.
++* Chassis detection recognises server, embedded and mini-PC
++  SMBIOS types; slack/hostnamectl uses the same table.
++* Authorization that needs interactive authentication now fails with
++  org.freedesktop.DBus.Error.InteractiveAuthorizationRequired so
++  clients can retry with interactive=true.
+ 
+ 0.2.6 (2026-06-20)
+ -----------------------
+@@ -58,7 +87,7 @@ See CHANGELOG.md for the full commit-level history.
+ BUGS
+ ====
+ 
+-Known issues and limitations as of the Unreleased version above.
++Known issues and limitations as of version 0.3.0.
+ Please report new issues at https://github.com/nater1983/hostnamed/issues
+ 
+ * GetProductUUID and GetHardwareSerial default to the auth_admin
+@@ -91,3 +120,31 @@ Please report new issues at https://github.com/nater1983/hostnamed/issues
+   subject's next login/session start, consistent with how PolKit
+   group subjects are evaluated; this is expected behavior but has
+   surprised testers expecting it to apply live.
++* Chassis is never reported as "vm" or "container": no virtualization
++  detection is performed, only machine-info, SMBIOS and device-tree
++  chassis information.
++* On platforms with a device tree, HardwareVendor is the lowercase
++  vendor prefix of the "compatible" property (e.g. "raspberrypi"),
++  not a marketing name, and many boards provide no chassis-type, in
++  which case Chassis stays empty.
++* After the D-Bus name is lost the daemon tries to re-acquire it, but
++  the startup path is not idempotent and the shared system-bus
++  connection exits the process on close by default, so recovery from
++  a dbus-daemon restart is not reliable; run hostnamed under a
++  supervisor. (Not yet reproduced; based on code review.)
++* /etc/machine-info is re-read and re-parsed several times per
++  resync, only double-quoted values are understood, and the first
++  matching key wins rather than the last.
++* hostnamectl creates /etc/machine-info through mktemp, leaving it
++  mode 0600 until chmod'd, and "hostnamectl set-hostname" overwrites
++  PRETTY_HOSTNAME with the short name. The chassis case tables in
++  hostnamectl must be kept in sync with the daemon by hand.
++* hostnamed calls sethostname() with the full value of /etc/HOSTNAME.
++  Slackware's rc.S is believed to use only the short name (text
++  before the first dot) for the kernel hostname; verify against the
++  installed rc.S if you use a fully qualified /etc/HOSTNAME.
++* The daemon never calls bindtextdomain(), so translations under po/
++  are not loaded by hostnamed itself.
++* hostnamed.SlackBuild defaults VERSION to "2026_master.3" rather
++  than the meson project version and copies a "BUG-NEWS" file that is
++  actually named BUGS-NEWS (the failure is hidden by "|| true").
+diff --git a/NEWS b/NEWS
+index b4f88d4..2ead598 100644
+--- a/NEWS
++++ b/NEWS
+@@ -2,6 +2,32 @@
+ 
+ All notable changes to `hostnamed` are documented in this file, derived from the project's git history.
+ 
++## [0.3.0] - 2026-10-14
++
++### Changed (build / compatibility)
++- **polkit is now a hard build dependency.** The `-Dpolkit=disabled` / `polkit` feature option has been removed, along with the unused `HAVE_POLKIT` define and every `polkit_found` conditional in the meson files. Previously a build without polkit failed at `#include <polkit/polkit.h>` anyway, and without polkit nothing could authorise the Set* methods. Anyone passing `-Dpolkit=...` to `meson setup` must drop it.
++- Hostname validation (`SetHostname`, `SetStaticHostname`) is now strict RFC 1123: labels of 1-63 characters, no empty labels (`a..b`), no leading/trailing dot, and no label that starts or ends with `-`. Names that were previously accepted but are invalid under these rules are now rejected with `InvalidArgs`.
++- `GetProductUUID` now returns the 16 raw UUID bytes (as systemd-hostnamed does) instead of the 36-character ASCII string as `ay`. It returns a `NotFound` error, rather than an empty array, when the UUID is unreadable, malformed, or the all-zero / all-0xFF placeholder.
++
++### Fixed
++- Fixed bogus `PropertiesChanged` emissions: `Chassis` and `IconName` were blanked and re-set on every resync, producing duplicate dict keys and a signal on every inotify event. The effective value (machine-info, then fallbacks) is now computed first and updated once; three file touches now produce one signal instead of ten.
++- `IconName` is now derived from the effective chassis string, so `CHASSIS=laptop` in `/etc/machine-info` without an `ICON_NAME` yields `computer-laptop` rather than `computer`.
++- `DefaultHostname` is now populated (`DEFAULT_HOSTNAME` from os-release, else `localhost`); it was always empty.
++- `HostnameSource` can now report `default` (static hostname unset and kernel hostname unset, `(none)`, or equal to the default); it previously only ever reported `static` or `transient`.
++- `SetPrettyHostname` no longer truncates arbitrary labels at the first dot. The leading-label reduction now applies only when the whole value is a valid hostname, so `Bob's PC v2.0` is stored as given while `dair.example.net` still becomes `dair`.
++- Polkit challenges are now reported as `org.freedesktop.DBus.Error.InteractiveAuthorizationRequired` when the caller passed `interactive=false` but authentication is possible, instead of a generic `AUTH_FAILED`, so GUI clients can retry with an agent dialog (matches localed).
++
++### Added
++- Device-tree fallbacks for platforms without DMI (ARM, RISC-V, e.g. Raspberry Pi): `HardwareModel` from `/sys/firmware/devicetree/base/model`, `HardwareVendor` from the vendor prefix of the first `compatible` entry, and `Chassis` from `chassis-type` when it is a known value.
++- `HardwareVendor` now prefers DMI `sys_vendor`, then `board_vendor` (previously `board_vendor` only), consistent with `hostnamectl`.
++- Expanded chassis table: rack-mount, multi-system and blade types map to `server`; IoT gateway and embedded PC map to `embedded`; all-in-one, pizza-box, space-saving, lunch-box, sealed-case, mini-PC and stick-PC map to `desktop`. The case tables in `slack/hostnamectl` were updated to match.
++
++## [0.2.7.1] - 2026-06-27 to 2026-09-01
++- Added validation for hostname metadata values and corrected the machine-info path constant.
++- Man pages for `hostnamed(8)` and `hostnamectl(1)` added and compressed in the SlackBuild.
++- New and updated translations (Arabic Latin script, Indonesian, Estonian and others) via Weblate; project version bumped to 0.2.7 then 0.2.7.1.
++- Removed `sbindir` paths from the build.
++
+ ## [0.2.6] - 2026-06-20
+ 
+ ### Security
+diff --git a/README.md b/README.md
+index 33c78bf..911faf0 100644
+--- a/README.md
++++ b/README.md
+@@ -39,9 +39,6 @@ Common configure options:
+ # Install under /usr instead of /usr/local
+ meson setup build --prefix=/usr
+ 
+-# Disable polkit (for testing only – not for production)
+-meson setup build -Dpolkit=disabled
+-
+ # Override the D-Bus service directory explicitly
+ meson setup build -Ddbus_system_service_dir=/usr/share/dbus-1/system-services
+ ```
+diff --git a/data/meson.build b/data/meson.build
+index 5a91308..65bdf34 100644
+--- a/data/meson.build
++++ b/data/meson.build
+@@ -25,14 +25,10 @@ _polkit_opt = get_option('polkit_policy_dir')
+ if _polkit_opt != ''
+   polkit_policy_dir = _polkit_opt
+ else
+-  if polkit_found
+-    polkit_policy_dir = polkit.get_variable(
+-      pkgconfig        : 'actiondir',
+-      pkgconfig_define : ['datadir', join_paths(prefix, datadir)],
+-    )
+-  else
+-    polkit_policy_dir = join_paths(prefix, datadir, 'polkit-1', 'actions')
+-  endif
++  polkit_policy_dir = polkit.get_variable(
++    pkgconfig        : 'actiondir',
++    pkgconfig_define : ['datadir', join_paths(prefix, datadir)],
++  )
+ endif
+ 
+ dbus_service_conf = configuration_data()
+@@ -51,12 +47,10 @@ install_data(
+   install_dir : dbus_conf_dir,
+ )
+ 
+-if polkit_found
+-  install_data(
+-    'org.freedesktop.hostname1.policy',
+-    install_dir : polkit_policy_dir,
+-  )
+-endif
++install_data(
++  'org.freedesktop.hostname1.policy',
++  install_dir : polkit_policy_dir,
++)
+ 
+ rules_conf = configuration_data()
+ rules_conf.set('PRIVILEGED_GROUP', get_option('privileged-group'))
+diff --git a/meson.build b/meson.build
+index 87aac03..2479144 100644
+--- a/meson.build
++++ b/meson.build
+@@ -1,7 +1,7 @@
+ project(
+   'hostnamed',
+   'c',
+-  version         : '0.2.7.1',
++  version         : '0.3.0',
+   license         : 'GPL-2.0-or-later',
+   meson_version   : '>= 0.58.0',
+   default_options : [
+@@ -37,13 +37,9 @@ polkit_req = '>= 0.113'
+ glib_dep = dependency('glib-2.0',         version : glib_req)
+ gio_dep  = dependency('gio-2.0',          version : glib_req)
+ gio_unix = dependency('gio-unix-2.0',     version : glib_req)
+-polkit   = dependency('polkit-gobject-1', version : polkit_req,
+-             required : get_option('polkit'))
+-
+-polkit_found = polkit.found()
+-if polkit_found
+-  add_project_arguments('-DHAVE_POLKIT=1', language : 'c')
+-endif
++# polkit is mandatory: it is the only authorisation path for the Set* D-Bus
++# methods, and the daemon sources include <polkit/polkit.h> unconditionally.
++polkit   = dependency('polkit-gobject-1', version : polkit_req)
+ 
+ i18n = import('i18n')
+ 
+@@ -93,6 +89,6 @@ summary({
+ }, section : 'Directories')
+ 
+ summary({
+-  'polkit' : polkit_found,
++  'polkit' : polkit.version(),
+   'GLib'   : glib_dep.version(),
+ }, section : 'Dependencies')
+diff --git a/meson_options.txt b/meson_options.txt
+index 793e8fb..7e04a45 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -1,10 +1,3 @@
+-option(
+-  'polkit',
+-  type        : 'feature',
+-  value       : 'auto',
+-  description : 'Use polkit for authorising Set* D-Bus method calls',
+-)
+-
+ option(
+   'dbus_system_service_dir',
+   type        : 'string',
+diff --git a/slack/hostnamectl b/slack/hostnamectl
+index 1f0a6d1..4a40ed2 100644
+--- a/slack/hostnamectl
++++ b/slack/hostnamectl
+@@ -82,12 +82,13 @@ init_machine_info() {
+   local ct
+   ct=$(dmi_read chassis_type)
+   case "$ct" in
+-    3|4|6|7)    chassis="desktop";     icon="computer-desktop" ;;
++    3|4|5|6|7|13|15|16|24|35|36) chassis="desktop";     icon="computer-desktop" ;;
+     8|9|10|14)  chassis="laptop";      icon="computer-laptop"  ;;
+     11)         chassis="handset";     icon="phone"            ;;
+-    17|23)      chassis="server";      icon="computer-server"  ;;
++    17|23|25|28|29) chassis="server";  icon="computer-server"  ;;
+     30|32)      chassis="tablet";      icon="computer-tablet"  ;;
+     31)         chassis="convertible"; icon="computer-laptop"  ;;
++    33|34)      chassis="embedded";    icon="computer"         ;;
+     *)          chassis="";            icon="computer"         ;;
+   esac
+ 
+@@ -118,12 +119,13 @@ detect_chassis() {
+   local ct
+   ct=$(dmi_read chassis_type)
+   case "$ct" in
+-    3|4|6|7)    echo "desktop"     ;;
++    3|4|5|6|7|13|15|16|24|35|36) echo "desktop" ;;
+     8|9|10|14)  echo "laptop"      ;;
+     11)         echo "handset"     ;;
+-    17|23)      echo "server"      ;;
++    17|23|25|28|29) echo "server"  ;;
+     30|32)      echo "tablet"      ;;
+     31)         echo "convertible" ;;
++    33|34)      echo "embedded"    ;;
+     *)          echo "unknown"     ;;
+   esac
+ }
+diff --git a/src/meson.build b/src/meson.build
+index 46020eb..e4a8147 100644
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -7,12 +7,9 @@ hostnamed_deps = [
+   glib_dep,
+   gio_dep,
+   gio_unix,
++  polkit,
+ ]
+ 
+-if polkit_found
+-  hostnamed_deps += polkit
+-endif
+-
+ hostnamed_inc = [
+   config_h_inc,
+   include_directories('.'),
+diff --git a/src/rcl-hostname.c b/src/rcl-hostname.c
+index 315a536..300eea8 100644
+--- a/src/rcl-hostname.c
++++ b/src/rcl-hostname.c
+@@ -164,45 +164,80 @@ static void rcl_daemon_init( RclDaemon *self ) {}
+    -------------------------------------------------------------------------- */
+ 
+ /*
+- * SMBIOS chassis types → freedesktop icon names.
+- * Numeric values from SMBIOS spec 3.x, Table 17.
++ * Chassis handling.  One table drives everything: the SMBIOS chassis type
++ * (SMBIOS spec 3.x, Table 17) maps to a Chassis string, and the Chassis
++ * string maps to an icon name.  Keep this in sync with the case statements
++ * in slack/hostnamectl.
+  */
+ const gchar *
+-rcl_chassis_type_to_icon_name( guint t )
++rcl_chassis_type_to_string( guint t )
+ {
+   switch( t )
+   {
+-    case  3: /* Desktop          */ return "computer-desktop";
+-    case  4: /* Low Profile      */ return "computer-desktop";
+-    case  6: /* Mini Tower       */ return "computer-desktop";
+-    case  7: /* Tower            */ return "computer-desktop";
+-    case  8: /* Portable         */ return "computer-laptop";
+-    case  9: /* Laptop           */ return "computer-laptop";
+-    case 10: /* Notebook         */ return "computer-laptop";
+-    case 11: /* Hand-held        */ return "phone";
+-    case 14: /* Sub-Notebook     */ return "computer-laptop";
+-    case 18: /* Expansion Chassis*/ return "computer-desktop";
+-    case 21: /* Peripheral       */ return "computer-desktop";
+-    case 30: /* Tablet           */ return "computer-tablet";
+-    case 31: /* Convertible      */ return "computer-laptop";
+-    case 32: /* Detachable       */ return "computer-tablet";
+-    default:                        return "computer";
++    case  3: /* Desktop            */
++    case  4: /* Low Profile Desktop*/
++    case  5: /* Pizza Box          */
++    case  6: /* Mini Tower         */
++    case  7: /* Tower              */
++    case 13: /* All In One         */
++    case 15: /* Space-saving       */
++    case 16: /* Lunch Box          */
++    case 24: /* Sealed-case PC     */
++    case 35: /* Mini PC            */
++    case 36: /* Stick PC           */ return "desktop";
++    case  8: /* Portable           */
++    case  9: /* Laptop             */
++    case 10: /* Notebook           */
++    case 14: /* Sub Notebook       */ return "laptop";
++    case 11: /* Hand Held          */ return "handset";
++    case 17: /* Main Server        */
++    case 23: /* Rack Mount Server  */
++    case 25: /* Multi-system       */
++    case 28: /* Blade              */
++    case 29: /* Blade Enclosure    */ return "server";
++    case 30: /* Tablet             */
++    case 32: /* Detachable         */ return "tablet";
++    case 31: /* Convertible        */ return "convertible";
++    case 33: /* IoT Gateway        */
++    case 34: /* Embedded PC        */ return "embedded";
++    default:                         return "";
+   }
+ }
+ 
++gboolean
++rcl_chassis_is_known( const gchar *c )
++{
++  static const gchar *const known[] =
++    { "desktop", "laptop", "convertible", "server", "tablet", "handset",
++      "watch", "embedded", "vm", "container", NULL };
++  guint i;
++
++  for( i = 0; c && known[i]; i++ )
++    if( g_strcmp0( c, known[i] ) == 0 )
++      return TRUE;
++  return FALSE;
++}
++
+ const gchar *
+-rcl_chassis_type_to_string( guint t )
++rcl_chassis_to_icon_name( const gchar *c )
+ {
+-  switch( t )
+-  {
+-    case  3: case  4: case  6: case  7: return "desktop";
+-    case  8: case  9: case 10: case 14: return "laptop";
+-    case 11:                            return "handset";
+-    case 17:                            return "server";
+-    case 30: case 32:                   return "tablet";
+-    case 31:                            return "convertible";
+-    default:                            return "";
+-  }
++  if( !c )                                return "computer";
++  if( g_strcmp0( c, "desktop"     ) == 0 ) return "computer-desktop";
++  if( g_strcmp0( c, "laptop"      ) == 0 ) return "computer-laptop";
++  if( g_strcmp0( c, "convertible" ) == 0 ) return "computer-laptop";
++  if( g_strcmp0( c, "server"      ) == 0 ) return "computer-server";
++  if( g_strcmp0( c, "tablet"      ) == 0 ) return "computer-tablet";
++  if( g_strcmp0( c, "handset"     ) == 0 ) return "phone";
++  if( g_strcmp0( c, "watch"       ) == 0 ) return "watch";
++  if( g_strcmp0( c, "vm"          ) == 0 ) return "computer-vm";
++  if( g_strcmp0( c, "container"   ) == 0 ) return "container";
++  return "computer";
++}
++
++const gchar *
++rcl_chassis_type_to_icon_name( guint t )
++{
++  return rcl_chassis_to_icon_name( rcl_chassis_type_to_string( t ) );
+ }
+ 
+ /* --------------------------------------------------------------------------
+@@ -285,6 +320,38 @@ read_dmi( const gchar *path )
+   return val ? val : g_strdup( "" );
+ }
+ 
++/* First non-empty of the given strings, as a newly-allocated string; takes
++   ownership of nothing and returns "" if all are empty. */
++static gchar *
++first_nonempty_dup( const gchar *a, const gchar *b, const gchar *c )
++{
++  if( a && a[0] ) return g_strdup( a );
++  if( b && b[0] ) return g_strdup( b );
++  if( c && c[0] ) return g_strdup( c );
++  return g_strdup( "" );
++}
++
++/* Device-tree string property (NUL-terminated); "" when absent. */
++static gchar *
++read_dt_string( const gchar *path )
++{
++  gchar *v = read_first_line( path );
++  return v ? v : g_strdup( "" );
++}
++
++/* The device-tree "compatible" property is a NUL-separated list of
++   "vendor,model" strings, most specific first.  Return the vendor prefix of
++   the first entry (e.g. "raspberrypi" from "raspberrypi,5-model-b"), or "". */
++static gchar *
++dt_vendor_from_compatible( const gchar *first_entry )
++{
++  const gchar *comma;
++
++  if( !first_entry || !( comma = strchr( first_entry, ',' ) ) || comma == first_entry )
++    return g_strdup( "" );
++  return g_strndup( first_entry, (gsize)( comma - first_entry ) );
++}
++
+ /* --------------------------------------------------------------------------
+    FirmwareDate parser
+ 
+@@ -317,6 +384,8 @@ parse_firmware_date_usec (const gchar *date_str)
+   return (guint64) t * G_USEC_PER_SEC;
+ }
+ 
++static gboolean rcl_hostname_is_valid( const gchar *name );
++
+ /* --------------------------------------------------------------------------
+    Property refresh
+    -------------------------------------------------------------------------- */
+@@ -373,14 +442,6 @@ rcl_daemon_sync_dbus_properties( RclHostnameDaemon *daemon )
+                    read_key_value_file( RCL_MACHINE_INFO_FILE, "PRETTY_HOSTNAME" ),
+                    "PrettyHostname" );
+ 
+-  UPDATE_STR_PROP( icon_name,
+-                   read_key_value_file( RCL_MACHINE_INFO_FILE, "ICON_NAME" ),
+-                   "IconName" );
+-
+-  UPDATE_STR_PROP( chassis,
+-                   read_key_value_file( RCL_MACHINE_INFO_FILE, "CHASSIS" ),
+-                   "Chassis" );
+-
+   UPDATE_STR_PROP( deployment,
+                    read_key_value_file( RCL_MACHINE_INFO_FILE, "DEPLOYMENT" ),
+                    "Deployment" );
+@@ -389,37 +450,70 @@ rcl_daemon_sync_dbus_properties( RclHostnameDaemon *daemon )
+                    read_key_value_file( RCL_MACHINE_INFO_FILE, "LOCATION" ),
+                    "Location" );
+ 
+-  /* ---- fall back chassis / icon from DMI if not set in machine-info ---- */
+-  if( priv->chassis == NULL || priv->chassis[0] == '\0' )
++  /* ---- chassis / icon ----
++     Chassis: machine-info, then DMI chassis type, then the device-tree
++     chassis-type property.  Icon: machine-info, else derived from the
++     effective chassis string.  Each value is computed first and passed
++     through UPDATE_STR_PROP exactly once, so an unchanged value never
++     produces a PropertiesChanged entry. */
+   {
+-    gchar *dmi_chassis_type = read_dmi( RCL_DMI_CHASSIS_TYPE );
+-    chassis_num = (guint) g_ascii_strtoull( dmi_chassis_type, NULL, 10 );
+-    g_free( dmi_chassis_type );
++    gchar *chassis_val = read_key_value_file( RCL_MACHINE_INFO_FILE, "CHASSIS" );
++    gchar *icon_val    = read_key_value_file( RCL_MACHINE_INFO_FILE, "ICON_NAME" );
++
++    if( chassis_val == NULL || chassis_val[0] == '\0' )
++    {
++      gchar *dmi_chassis_type = read_dmi( RCL_DMI_CHASSIS_TYPE );
++      chassis_num = (guint) g_ascii_strtoull( dmi_chassis_type, NULL, 10 );
++      g_free( dmi_chassis_type );
+ 
+-    g_free( priv->chassis );
+-    priv->chassis = g_strdup( rcl_chassis_type_to_string( chassis_num ) );
++      g_free( chassis_val );
++      chassis_val = g_strdup( rcl_chassis_type_to_string( chassis_num ) );
++
++      if( chassis_val[0] == '\0' )
++      {
++        gchar *dt = read_dt_string( RCL_DT_CHASSIS_TYPE );
++        if( rcl_chassis_is_known( dt ) )
++        {
++          g_free( chassis_val );
++          chassis_val = dt;
++        }
++        else
++          g_free( dt );
++      }
++    }
+ 
+-    g_variant_builder_add( &changed_props, "{sv}", "Chassis",
+-                           g_variant_new_string( priv->chassis ) );
+-    any_changed = TRUE;
++    if( icon_val == NULL || icon_val[0] == '\0' )
++    {
++      g_free( icon_val );
++      icon_val = g_strdup( rcl_chassis_to_icon_name( chassis_val ) );
++    }
++
++    UPDATE_STR_PROP( chassis,   chassis_val, "Chassis" );
++    UPDATE_STR_PROP( icon_name, icon_val,    "IconName" );
+   }
+ 
+-  if( priv->icon_name == NULL || priv->icon_name[0] == '\0' )
++  /* ---- DefaultHostname: os-release DEFAULT_HOSTNAME, else "localhost" ---- */
+   {
+-    g_free( priv->icon_name );
+-    priv->icon_name = g_strdup( rcl_chassis_type_to_icon_name( chassis_num ) );
+-
+-    g_variant_builder_add( &changed_props, "{sv}", "IconName",
+-                           g_variant_new_string( priv->icon_name ) );
+-    any_changed = TRUE;
++    gchar *def = read_key_value_file( RCL_OS_RELEASE_FILE, "DEFAULT_HOSTNAME" );
++    if( !def || !rcl_hostname_is_valid( def ) )
++    {
++      g_free( def );
++      def = g_strdup( "localhost" );
++    }
++    UPDATE_STR_PROP( default_hostname, def, "DefaultHostname" );
+   }
+ 
+-  /* ---- HostnameSource ---- */
++  /* ---- HostnameSource ----
++     static    – a static hostname is configured
++     transient – none configured, kernel hostname was set to something else
++     default   – none configured, kernel hostname unset or equal to default */
+   {
+     const gchar *src;
+     if( priv->static_hostname && priv->static_hostname[0] != '\0' )
+       src = "static";
+-    else if( priv->hostname && priv->hostname[0] != '\0' )
++    else if( priv->hostname && priv->hostname[0] != '\0' &&
++             g_strcmp0( priv->hostname, "(none)" ) != 0 &&
++             g_strcmp0( priv->hostname, priv->default_hostname ) != 0 )
+       src = "transient";
+     else
+       src = "default";
+@@ -448,8 +542,22 @@ rcl_daemon_sync_dbus_properties( RclHostnameDaemon *daemon )
+                    "OperatingSystemHomeURL" );
+ 
+   /* ---- DMI hardware info ---- */
+-  UPDATE_STR_PROP( hw_vendor,        read_dmi(RCL_DMI_BOARD_VENDOR),  "HardwareVendor" );
+-  UPDATE_STR_PROP( hw_model,         read_dmi(RCL_DMI_PRODUCT_NAME),  "HardwareModel" );
++  /* Vendor: DMI system vendor, then board vendor, then the device-tree
++     compatible prefix.  Model: DMI product name, then device-tree model. */
++  {
++    gchar *sys_v   = read_dmi( RCL_DMI_SYS_VENDOR );
++    gchar *board_v = read_dmi( RCL_DMI_BOARD_VENDOR );
++    gchar *compat  = read_dt_string( RCL_DT_COMPATIBLE );
++    gchar *dt_v    = dt_vendor_from_compatible( compat );
++    gchar *prod    = read_dmi( RCL_DMI_PRODUCT_NAME );
++    gchar *dt_m    = read_dt_string( RCL_DT_MODEL );
++
++    UPDATE_STR_PROP( hw_vendor, first_nonempty_dup( sys_v, board_v, dt_v ), "HardwareVendor" );
++    UPDATE_STR_PROP( hw_model,  first_nonempty_dup( prod, dt_m, NULL ),     "HardwareModel" );
++
++    g_free( sys_v ); g_free( board_v ); g_free( compat );
++    g_free( dt_v );  g_free( prod );    g_free( dt_m );
++  }
+   UPDATE_STR_PROP( firmware_version, read_dmi(RCL_DMI_BIOS_VERSION),  "FirmwareVersion" );
+ 
+   /* FirmwareDate is type 't' (uint64 µs since epoch) per the spec */
+@@ -653,7 +761,7 @@ write_machine_info_key( const gchar  *key,
+ static gboolean
+ rcl_hostname_is_valid( const gchar *name )
+ {
+-  gsize len, i;
++  gsize len, i, label_len = 0;
+ 
+   if( !name )
+     return FALSE;
+@@ -662,16 +770,29 @@ rcl_hostname_is_valid( const gchar *name )
+   if( len == 0 || len > HOST_NAME_MAX )
+     return FALSE;
+ 
+-  if( name[0] == '.' || name[len - 1] == '.' )
+-    return FALSE;
+-
++  /* RFC 1123: labels of 1-63 [A-Za-z0-9-] characters, separated by single
++     dots, not starting or ending with '-'.  No leading/trailing/double dot. */
+   for( i = 0; i < len; i++ )
+   {
+     gchar c = name[i];
+-    if( !( g_ascii_isalnum(c) || c == '-' || c == '.' ) )
++
++    if( c == '.' )
++    {
++      if( label_len == 0 || name[i - 1] == '-' )
++        return FALSE;
++      label_len = 0;
++      continue;
++    }
++
++    if( !( g_ascii_isalnum( c ) || c == '-' ) )
++      return FALSE;
++    if( c == '-' && label_len == 0 )
++      return FALSE;
++    if( ++label_len > 63 )
+       return FALSE;
+   }
+-  return TRUE;
++
++  return label_len > 0 && name[len - 1] != '-';
+ }
+ 
+ /* --------------------------------------------------------------------------
+@@ -697,8 +818,12 @@ rcl_derive_pretty_hostname( const gchar *name )
+   if( !dot )
+     return g_strdup( name );
+ 
+-  /* Looks like an FQDN/static hostname rather than a human label –
+-     keep only the leading segment. */
++  /* Only treat it as an FQDN/static hostname (and keep the leading label)
++     when the whole string is a valid hostname.  A deliberate human label
++     such as "Bob's PC v2.0" is left untouched. */
++  if( !rcl_hostname_is_valid( name ) )
++    return g_strdup( name );
++
+   return g_strndup( name, (gsize)(dot - name) );
+ }
+ 
+@@ -914,17 +1039,62 @@ do_set_machine_info( RclHostnameDaemon *daemon, const gchar *key,
+   g_dbus_method_invocation_return_value( invocation, NULL );
+ }
+ 
++/* Parse "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" into 16 raw bytes.  Returns
++   FALSE for malformed input and for the all-zero / all-0xFF placeholder
++   UUIDs firmware uses to mean "not set". */
++static gboolean
++parse_uuid_bytes( const gchar *str, guchar out[16] )
++{
++  gsize   n = 0;
++  gint    hi = -1;
++  guchar  or_all = 0, and_all = 0xff;
++
++  for( ; *str; str++ )
++  {
++    gint v;
++
++    if( *str == '-' )
++      continue;
++    v = g_ascii_xdigit_value( *str );
++    if( v < 0 )
++      return FALSE;
++    if( hi < 0 )
++      hi = v;
++    else
++    {
++      if( n >= 16 )
++        return FALSE;
++      out[n] = (guchar)( ( hi << 4 ) | v );
++      or_all  |= out[n];
++      and_all &= out[n];
++      n++;
++      hi = -1;
++    }
++  }
++
++  return n == 16 && hi < 0 && or_all != 0 && and_all != 0xff;
++}
++
+ static void
+ do_get_product_uuid( GDBusMethodInvocation *invocation )
+ {
+   gchar          *uuid_str = read_dmi( RCL_DMI_PRODUCT_UUID );
++  guchar          raw[16];
+   GVariantBuilder bytes;
+ 
+-  g_variant_builder_init( &bytes, G_VARIANT_TYPE("ay") );
+-  for( gsize i = 0; uuid_str[i]; i++ )
+-    g_variant_builder_add( &bytes, "y", (guchar)uuid_str[i] );
++  if( !parse_uuid_bytes( uuid_str, raw ) )
++  {
++    g_free( uuid_str );
++    g_dbus_method_invocation_return_error( invocation,
++      G_IO_ERROR, G_IO_ERROR_NOT_FOUND, "Product UUID is not available" );
++    return;
++  }
+   g_free( uuid_str );
+ 
++  g_variant_builder_init( &bytes, G_VARIANT_TYPE("ay") );
++  for( gsize i = 0; i < 16; i++ )
++    g_variant_builder_add( &bytes, "y", raw[i] );
++
+   g_dbus_method_invocation_return_value( invocation,
+     g_variant_new("(ay)", &bytes) );
+ }
+@@ -960,9 +1130,18 @@ on_check_done( GObject *source, GAsyncResult *res, gpointer user_data )
+ 
+   if( !polkit_authorization_result_get_is_authorized( result ) )
+   {
+-    g_dbus_method_invocation_return_error( ctx->invocation,
+-      G_DBUS_ERROR, G_DBUS_ERROR_AUTH_FAILED,
+-      "Not authorised to perform the requested action" );
++    /* is_challenge: authentication is possible but the caller passed
++       interactive=FALSE.  Tell the client to retry with interactive=TRUE
++       (so a GUI can raise an agent dialog) rather than reporting a hard
++       denial. */
++    if( polkit_authorization_result_get_is_challenge( result ) )
++      g_dbus_method_invocation_return_dbus_error( ctx->invocation,
++        "org.freedesktop.DBus.Error.InteractiveAuthorizationRequired",
++        "Authentication is required to perform the requested action" );
++    else
++      g_dbus_method_invocation_return_error( ctx->invocation,
++        G_DBUS_ERROR, G_DBUS_ERROR_AUTH_FAILED,
++        "Not authorised to perform the requested action" );
+     g_object_unref( result );
+     auth_ctx_free( ctx );
+     return;
+diff --git a/src/rcl-hostname.h b/src/rcl-hostname.h
+index 1fc92e1..4e5f26a 100644
+--- a/src/rcl-hostname.h
++++ b/src/rcl-hostname.h
+@@ -164,6 +164,19 @@ void rcl_daemon_sync_dbus_properties ( RclHostnameDaemon *daemon );
+ #define RCL_DMI_BIOS_VERSION       "/sys/class/dmi/id/bios_version"
+ #define RCL_DMI_BIOS_DATE          "/sys/class/dmi/id/bios_date"
+ #define RCL_DMI_BOARD_VENDOR       "/sys/class/dmi/id/board_vendor"
++#define RCL_DMI_SYS_VENDOR         "/sys/class/dmi/id/sys_vendor"
++
++/* Device-tree fallbacks for platforms without DMI (ARM, RISC-V, e.g. the
++   Raspberry Pi).  Overridable for tests. */
++#ifndef RCL_DT_MODEL
++#define RCL_DT_MODEL               "/sys/firmware/devicetree/base/model"
++#endif
++#ifndef RCL_DT_COMPATIBLE
++#define RCL_DT_COMPATIBLE          "/sys/firmware/devicetree/base/compatible"
++#endif
++#ifndef RCL_DT_CHASSIS_TYPE
++#define RCL_DT_CHASSIS_TYPE        "/sys/firmware/devicetree/base/chassis-type"
++#endif
+ 
+ /*---------------------------------------------------------------------------
+   Chassis type helpers.
+@@ -177,5 +190,7 @@ void rcl_daemon_sync_dbus_properties ( RclHostnameDaemon *daemon );
+ 
+ const gchar *rcl_chassis_type_to_icon_name ( guint chassis_type );
+ const gchar *rcl_chassis_type_to_string    ( guint chassis_type );
++const gchar *rcl_chassis_to_icon_name      ( const gchar *chassis );
++gboolean     rcl_chassis_is_known          ( const gchar *chassis );
+ 
+ G_END_DECLS
