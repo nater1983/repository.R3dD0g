@@ -82,12 +82,13 @@ init_machine_info() {
   local ct
   ct=$(dmi_read chassis_type)
   case "$ct" in
-    3|4|6|7)    chassis="desktop";     icon="computer-desktop" ;;
+    3|4|5|6|7|13|15|16|24|35|36) chassis="desktop";     icon="computer-desktop" ;;
     8|9|10|14)  chassis="laptop";      icon="computer-laptop"  ;;
     11)         chassis="handset";     icon="phone"            ;;
-    17|23)      chassis="server";      icon="computer-server"  ;;
+    17|23|25|28|29) chassis="server";  icon="computer-server"  ;;
     30|32)      chassis="tablet";      icon="computer-tablet"  ;;
     31)         chassis="convertible"; icon="computer-laptop"  ;;
+    33|34)      chassis="embedded";    icon="computer"         ;;
     *)          chassis="";            icon="computer"         ;;
   esac
 
@@ -118,12 +119,13 @@ detect_chassis() {
   local ct
   ct=$(dmi_read chassis_type)
   case "$ct" in
-    3|4|6|7)    echo "desktop"     ;;
+    3|4|5|6|7|13|15|16|24|35|36) echo "desktop" ;;
     8|9|10|14)  echo "laptop"      ;;
     11)         echo "handset"     ;;
-    17|23)      echo "server"      ;;
+    17|23|25|28|29) echo "server"  ;;
     30|32)      echo "tablet"      ;;
     31)         echo "convertible" ;;
+    33|34)      echo "embedded"    ;;
     *)          echo "unknown"     ;;
   esac
 }
