@@ -1,0 +1,1 @@
+patch -Np1 -i $CWD/patch/hostnamed/hostnamed-0.3.0.patch || { touch ${SLACK_MINE_BUILD_DIR}/${PKGNAME}.failed ; continue ; }
