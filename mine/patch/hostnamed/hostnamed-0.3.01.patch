@@ -1,0 +1,209 @@
+From 46b4f7cfe5ca8cc8a51d955edb20e33ef6cfabef Mon Sep 17 00:00:00 2001
+From: Nathaniel Russell <naterussell83@gmail.com>
+Date: Wed, 14 Oct 2026 18:16:59 -0500
+Subject: [PATCH] BUILD CHANGE: polkit is now required. The -Dpolkit option is
+ gone.
+
+Signed-off-by: Nathaniel Russell <naterussell83@gmail.com>
+---
+ README.md          |  3 ---
+ data/meson.build   | 22 +++++++------------
+ meson.build        | 12 ++++------
+ meson_options.txt  |  7 ------
+ src/meson.build    |  5 +----
+ src/rcl-hostname.c | 55 +++++++++++++++++++++++-----------------------
+ 6 files changed, 41 insertions(+), 63 deletions(-)
+
+diff --git a/README.md b/README.md
+index 33c78bf..911faf0 100644
+--- a/README.md
++++ b/README.md
+@@ -39,9 +39,6 @@ Common configure options:
+ # Install under /usr instead of /usr/local
+ meson setup build --prefix=/usr
+ 
+-# Disable polkit (for testing only – not for production)
+-meson setup build -Dpolkit=disabled
+-
+ # Override the D-Bus service directory explicitly
+ meson setup build -Ddbus_system_service_dir=/usr/share/dbus-1/system-services
+ ```
+diff --git a/data/meson.build b/data/meson.build
+index 5a91308..65bdf34 100644
+--- a/data/meson.build
++++ b/data/meson.build
+@@ -25,14 +25,10 @@ _polkit_opt = get_option('polkit_policy_dir')
+ if _polkit_opt != ''
+   polkit_policy_dir = _polkit_opt
+ else
+-  if polkit_found
+-    polkit_policy_dir = polkit.get_variable(
+-      pkgconfig        : 'actiondir',
+-      pkgconfig_define : ['datadir', join_paths(prefix, datadir)],
+-    )
+-  else
+-    polkit_policy_dir = join_paths(prefix, datadir, 'polkit-1', 'actions')
+-  endif
++  polkit_policy_dir = polkit.get_variable(
++    pkgconfig        : 'actiondir',
++    pkgconfig_define : ['datadir', join_paths(prefix, datadir)],
++  )
+ endif
+ 
+ dbus_service_conf = configuration_data()
+@@ -51,12 +47,10 @@ install_data(
+   install_dir : dbus_conf_dir,
+ )
+ 
+-if polkit_found
+-  install_data(
+-    'org.freedesktop.hostname1.policy',
+-    install_dir : polkit_policy_dir,
+-  )
+-endif
++install_data(
++  'org.freedesktop.hostname1.policy',
++  install_dir : polkit_policy_dir,
++)
+ 
+ rules_conf = configuration_data()
+ rules_conf.set('PRIVILEGED_GROUP', get_option('privileged-group'))
+diff --git a/meson.build b/meson.build
+index 87aac03..2368a7a 100644
+--- a/meson.build
++++ b/meson.build
+@@ -37,13 +37,9 @@ polkit_req = '>= 0.113'
+ glib_dep = dependency('glib-2.0',         version : glib_req)
+ gio_dep  = dependency('gio-2.0',          version : glib_req)
+ gio_unix = dependency('gio-unix-2.0',     version : glib_req)
+-polkit   = dependency('polkit-gobject-1', version : polkit_req,
+-             required : get_option('polkit'))
+-
+-polkit_found = polkit.found()
+-if polkit_found
+-  add_project_arguments('-DHAVE_POLKIT=1', language : 'c')
+-endif
++# polkit is mandatory: it is the only authorisation path for the Set* D-Bus
++# methods, and the daemon sources include <polkit/polkit.h> unconditionally.
++polkit   = dependency('polkit-gobject-1', version : polkit_req)
+ 
+ i18n = import('i18n')
+ 
+@@ -93,6 +89,6 @@ summary({
+ }, section : 'Directories')
+ 
+ summary({
+-  'polkit' : polkit_found,
++  'polkit' : polkit.version(),
+   'GLib'   : glib_dep.version(),
+ }, section : 'Dependencies')
+diff --git a/meson_options.txt b/meson_options.txt
+index 793e8fb..7e04a45 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -1,10 +1,3 @@
+-option(
+-  'polkit',
+-  type        : 'feature',
+-  value       : 'auto',
+-  description : 'Use polkit for authorising Set* D-Bus method calls',
+-)
+-
+ option(
+   'dbus_system_service_dir',
+   type        : 'string',
+diff --git a/src/meson.build b/src/meson.build
+index 46020eb..e4a8147 100644
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -7,12 +7,9 @@ hostnamed_deps = [
+   glib_dep,
+   gio_dep,
+   gio_unix,
++  polkit,
+ ]
+ 
+-if polkit_found
+-  hostnamed_deps += polkit
+-endif
+-
+ hostnamed_inc = [
+   config_h_inc,
+   include_directories('.'),
+diff --git a/src/rcl-hostname.c b/src/rcl-hostname.c
+index 315a536..d38607c 100644
+--- a/src/rcl-hostname.c
++++ b/src/rcl-hostname.c
+@@ -373,14 +373,6 @@ rcl_daemon_sync_dbus_properties( RclHostnameDaemon *daemon )
+                    read_key_value_file( RCL_MACHINE_INFO_FILE, "PRETTY_HOSTNAME" ),
+                    "PrettyHostname" );
+ 
+-  UPDATE_STR_PROP( icon_name,
+-                   read_key_value_file( RCL_MACHINE_INFO_FILE, "ICON_NAME" ),
+-                   "IconName" );
+-
+-  UPDATE_STR_PROP( chassis,
+-                   read_key_value_file( RCL_MACHINE_INFO_FILE, "CHASSIS" ),
+-                   "Chassis" );
+-
+   UPDATE_STR_PROP( deployment,
+                    read_key_value_file( RCL_MACHINE_INFO_FILE, "DEPLOYMENT" ),
+                    "Deployment" );
+@@ -389,29 +381,38 @@ rcl_daemon_sync_dbus_properties( RclHostnameDaemon *daemon )
+                    read_key_value_file( RCL_MACHINE_INFO_FILE, "LOCATION" ),
+                    "Location" );
+ 
+-  /* ---- fall back chassis / icon from DMI if not set in machine-info ---- */
+-  if( priv->chassis == NULL || priv->chassis[0] == '\0' )
++  /* ---- chassis / icon: machine-info wins, DMI is the fallback ----
++     The effective value is computed first and then fed through
++     UPDATE_STR_PROP exactly once, so an unchanged value never produces a
++     PropertiesChanged entry (previously the machine-info read blanked the
++     field and the DMI fallback re-set it on every sync, emitting duplicate
++     Chassis/IconName entries each time). */
+   {
+-    gchar *dmi_chassis_type = read_dmi( RCL_DMI_CHASSIS_TYPE );
+-    chassis_num = (guint) g_ascii_strtoull( dmi_chassis_type, NULL, 10 );
+-    g_free( dmi_chassis_type );
+-
+-    g_free( priv->chassis );
+-    priv->chassis = g_strdup( rcl_chassis_type_to_string( chassis_num ) );
++    gchar *chassis_val = read_key_value_file( RCL_MACHINE_INFO_FILE, "CHASSIS" );
++    gchar *icon_val    = read_key_value_file( RCL_MACHINE_INFO_FILE, "ICON_NAME" );
++    gboolean need_chassis = ( chassis_val == NULL || chassis_val[0] == '\0' );
++    gboolean need_icon    = ( icon_val    == NULL || icon_val[0]    == '\0' );
+ 
+-    g_variant_builder_add( &changed_props, "{sv}", "Chassis",
+-                           g_variant_new_string( priv->chassis ) );
+-    any_changed = TRUE;
+-  }
++    if( need_chassis || need_icon )
++    {
++      gchar *dmi_chassis_type = read_dmi( RCL_DMI_CHASSIS_TYPE );
++      chassis_num = (guint) g_ascii_strtoull( dmi_chassis_type, NULL, 10 );
++      g_free( dmi_chassis_type );
++    }
+ 
+-  if( priv->icon_name == NULL || priv->icon_name[0] == '\0' )
+-  {
+-    g_free( priv->icon_name );
+-    priv->icon_name = g_strdup( rcl_chassis_type_to_icon_name( chassis_num ) );
++    if( need_chassis )
++    {
++      g_free( chassis_val );
++      chassis_val = g_strdup( rcl_chassis_type_to_string( chassis_num ) );
++    }
++    if( need_icon )
++    {
++      g_free( icon_val );
++      icon_val = g_strdup( rcl_chassis_type_to_icon_name( chassis_num ) );
++    }
+ 
+-    g_variant_builder_add( &changed_props, "{sv}", "IconName",
+-                           g_variant_new_string( priv->icon_name ) );
+-    any_changed = TRUE;
++    UPDATE_STR_PROP( chassis,   chassis_val, "Chassis" );
++    UPDATE_STR_PROP( icon_name, icon_val,    "IconName" );
+   }
+ 
+   /* ---- HostnameSource ---- */
