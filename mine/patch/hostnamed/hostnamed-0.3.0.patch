@@ -1,8 +1,8 @@
 diff --git a/BUGS-NEWS b/BUGS-NEWS
-index af9e301..1d50070 100644
+index af9e301..56145d4 100644
 --- a/BUGS-NEWS
 +++ b/BUGS-NEWS
-@@ -2,7 +2,36 @@ NEWS
+@@ -2,7 +2,45 @@ NEWS
  ====
  
  This file summarizes user-visible changes to hostnamed, most recent first.
@@ -30,8 +30,17 @@ index af9e301..1d50070 100644
 +  value is a valid hostname; free-form labels containing dots are
 +  kept intact.
 +* Hardware information falls back to the device tree on systems
-+  without DMI (HardwareModel, HardwareVendor, Chassis), and
-+  HardwareVendor prefers sys_vendor over board_vendor.
++  without DMI (HardwareModel, HardwareVendor, Chassis).
++* HardwareVendor and HardwareModel now skip empty and placeholder
++  DMI strings ("System manufacturer", "System Product Name", "To Be
++  Filled By O.E.M.", ...) and fall back from sys_vendor/product_name
++  to board_vendor/board_name, so desktop boards that only fill in
++  the baseboard record report their real vendor and model.
++* GetHardwareSerial returns the first usable of product_serial,
++  board_serial and chassis_serial instead of chassis_serial only,
++  skipping placeholder values such as "Default string" and
++  "System Serial Number". On systems without DMI it falls back to
++  the device-tree serial-number property.
 +* Chassis detection recognises server, embedded and mini-PC
 +  SMBIOS types; slack/hostnamectl uses the same table.
 +* Authorization that needs interactive authentication now fails with
@@ -40,7 +49,7 @@ index af9e301..1d50070 100644
  
  0.2.6 (2026-06-20)
  -----------------------
-@@ -58,7 +87,7 @@ See CHANGELOG.md for the full commit-level history.
+@@ -58,7 +96,7 @@ See CHANGELOG.md for the full commit-level history.
  BUGS
  ====
  
@@ -49,13 +58,17 @@ index af9e301..1d50070 100644
  Please report new issues at https://github.com/nater1983/hostnamed/issues
  
  * GetProductUUID and GetHardwareSerial default to the auth_admin
-@@ -91,3 +120,31 @@ Please report new issues at https://github.com/nater1983/hostnamed/issues
+@@ -91,3 +129,35 @@ Please report new issues at https://github.com/nater1983/hostnamed/issues
    subject's next login/session start, consistent with how PolKit
    group subjects are evaluated; this is expected behavior but has
    surprised testers expecting it to apply live.
 +* Chassis is never reported as "vm" or "container": no virtualization
 +  detection is performed, only machine-info, SMBIOS and device-tree
 +  chassis information.
++* The placeholder list is a fixed set of known strings; a board
++  that reports some other unfilled template text will still show
++  that text. product_version is deliberately not consulted, because
++  on many systems it holds a revision rather than a model name.
 +* On platforms with a device tree, HardwareVendor is the lowercase
 +  vendor prefix of the "compatible" property (e.g. "raspberrypi"),
 +  not a marketing name, and many boards provide no chassis-type, in
@@ -82,10 +95,10 @@ index af9e301..1d50070 100644
 +  than the meson project version and copies a "BUG-NEWS" file that is
 +  actually named BUGS-NEWS (the failure is hidden by "|| true").
 diff --git a/NEWS b/NEWS
-index b4f88d4..2ead598 100644
+index b4f88d4..b727e4c 100644
 --- a/NEWS
 +++ b/NEWS
-@@ -2,6 +2,32 @@
+@@ -2,6 +2,33 @@
  
  All notable changes to `hostnamed` are documented in this file, derived from the project's git history.
  
@@ -106,7 +119,8 @@ index b4f88d4..2ead598 100644
 +
 +### Added
 +- Device-tree fallbacks for platforms without DMI (ARM, RISC-V, e.g. Raspberry Pi): `HardwareModel` from `/sys/firmware/devicetree/base/model`, `HardwareVendor` from the vendor prefix of the first `compatible` entry, and `Chassis` from `chassis-type` when it is a known value.
-+- `HardwareVendor` now prefers DMI `sys_vendor`, then `board_vendor` (previously `board_vendor` only), consistent with `hostnamectl`.
++- `HardwareVendor` is now taken from DMI `sys_vendor`, then `board_vendor`, then the device tree; `HardwareModel` from `product_name`, then `board_name`, then the device tree. Empty values and the unfilled template strings firmware leaves behind (`System manufacturer`, `System Product Name`, `To Be Filled By O.E.M.`, `Default string`, ...) are skipped at each step, so boards such as the ASUS PRIME B550-PLUS now report the real board name and vendor instead of the placeholder. `slack/hostnamectl` uses the same logic and the same placeholder list (it now also reads the device tree and honours `DMI_DIR` / `DT_DIR` for testing).
++- `GetHardwareSerial` now returns the first usable serial from DMI `product_serial`, `board_serial`, `chassis_serial` (it previously read `chassis_serial` only, which many boards leave as `Default string`), skipping the same placeholder values, and falls back to the device-tree `serial-number` property on platforms without a DMI serial (e.g. Raspberry Pi).
 +- Expanded chassis table: rack-mount, multi-system and blade types map to `server`; IoT gateway and embedded PC map to `embedded`; all-in-one, pizza-box, space-saving, lunch-box, sealed-case, mini-PC and stick-PC map to `desktop`. The case tables in `slack/hostnamectl` were updated to match.
 +
 +## [0.2.7.1] - 2026-06-27 to 2026-09-01
@@ -118,62 +132,8 @@ index b4f88d4..2ead598 100644
  ## [0.2.6] - 2026-06-20
  
  ### Security
-diff --git a/README.md b/README.md
-index 33c78bf..911faf0 100644
---- a/README.md
-+++ b/README.md
-@@ -39,9 +39,6 @@ Common configure options:
- # Install under /usr instead of /usr/local
- meson setup build --prefix=/usr
- 
--# Disable polkit (for testing only – not for production)
--meson setup build -Dpolkit=disabled
--
- # Override the D-Bus service directory explicitly
- meson setup build -Ddbus_system_service_dir=/usr/share/dbus-1/system-services
- ```
-diff --git a/data/meson.build b/data/meson.build
-index 5a91308..65bdf34 100644
---- a/data/meson.build
-+++ b/data/meson.build
-@@ -25,14 +25,10 @@ _polkit_opt = get_option('polkit_policy_dir')
- if _polkit_opt != ''
-   polkit_policy_dir = _polkit_opt
- else
--  if polkit_found
--    polkit_policy_dir = polkit.get_variable(
--      pkgconfig        : 'actiondir',
--      pkgconfig_define : ['datadir', join_paths(prefix, datadir)],
--    )
--  else
--    polkit_policy_dir = join_paths(prefix, datadir, 'polkit-1', 'actions')
--  endif
-+  polkit_policy_dir = polkit.get_variable(
-+    pkgconfig        : 'actiondir',
-+    pkgconfig_define : ['datadir', join_paths(prefix, datadir)],
-+  )
- endif
- 
- dbus_service_conf = configuration_data()
-@@ -51,12 +47,10 @@ install_data(
-   install_dir : dbus_conf_dir,
- )
- 
--if polkit_found
--  install_data(
--    'org.freedesktop.hostname1.policy',
--    install_dir : polkit_policy_dir,
--  )
--endif
-+install_data(
-+  'org.freedesktop.hostname1.policy',
-+  install_dir : polkit_policy_dir,
-+)
- 
- rules_conf = configuration_data()
- rules_conf.set('PRIVILEGED_GROUP', get_option('privileged-group'))
 diff --git a/meson.build b/meson.build
-index 87aac03..2479144 100644
+index 2368a7a..2479144 100644
 --- a/meson.build
 +++ b/meson.build
 @@ -1,7 +1,7 @@
@@ -185,51 +145,43 @@ index 87aac03..2479144 100644
    license         : 'GPL-2.0-or-later',
    meson_version   : '>= 0.58.0',
    default_options : [
-@@ -37,13 +37,9 @@ polkit_req = '>= 0.113'
- glib_dep = dependency('glib-2.0',         version : glib_req)
- gio_dep  = dependency('gio-2.0',          version : glib_req)
- gio_unix = dependency('gio-unix-2.0',     version : glib_req)
--polkit   = dependency('polkit-gobject-1', version : polkit_req,
--             required : get_option('polkit'))
--
--polkit_found = polkit.found()
--if polkit_found
--  add_project_arguments('-DHAVE_POLKIT=1', language : 'c')
--endif
-+# polkit is mandatory: it is the only authorisation path for the Set* D-Bus
-+# methods, and the daemon sources include <polkit/polkit.h> unconditionally.
-+polkit   = dependency('polkit-gobject-1', version : polkit_req)
- 
- i18n = import('i18n')
- 
-@@ -93,6 +89,6 @@ summary({
- }, section : 'Directories')
- 
- summary({
--  'polkit' : polkit_found,
-+  'polkit' : polkit.version(),
-   'GLib'   : glib_dep.version(),
- }, section : 'Dependencies')
-diff --git a/meson_options.txt b/meson_options.txt
-index 793e8fb..7e04a45 100644
---- a/meson_options.txt
-+++ b/meson_options.txt
-@@ -1,10 +1,3 @@
--option(
--  'polkit',
--  type        : 'feature',
--  value       : 'auto',
--  description : 'Use polkit for authorising Set* D-Bus method calls',
--)
--
- option(
-   'dbus_system_service_dir',
-   type        : 'string',
 diff --git a/slack/hostnamectl b/slack/hostnamectl
-index 1f0a6d1..4a40ed2 100644
+index 1f0a6d1..7817573 100644
 --- a/slack/hostnamectl
 +++ b/slack/hostnamectl
-@@ -82,12 +82,13 @@ init_machine_info() {
+@@ -45,7 +45,30 @@ get_os_release() {
+ }
+ 
+ dmi_read() {
+-  cat "/sys/class/dmi/id/$1" 2>/dev/null || true
++  cat "${DMI_DIR:-/sys/class/dmi/id}/$1" 2>/dev/null || true
++}
++
++# True for empty values and the unfilled template strings firmware leaves in
++# DMI identity fields (e.g. ASUS: sys_vendor "System manufacturer",
++# product_name "System Product Name").  Keep in sync with
++# rcl_dmi_is_placeholder() in src/rcl-hostname.c.
++dmi_is_placeholder() {
++  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')" in
++    ""|"system manufacturer"|"system product name"|"system version"| \
++    "to be filled by o.e.m."|"default string"|"not applicable"| \
++    "not specified"|"n/a"|"none"|"unknown"|"undefined"|"o.e.m."|"oem"| \
++    "type1productconfigid"|"all series"|"system serial number"| \
++    "chassis serial number"|"base board serial number"|"serial number") return 0 ;;
++  esac
++  return 1
++}
++
++# First usable argument, else empty.
++first_usable() {
++  local v
++  for v in "$@"; do
++    dmi_is_placeholder "$v" || { printf '%s' "$v"; return; }
++  done
+ }
+ 
+ machine_info_get() {
+@@ -82,12 +105,13 @@ init_machine_info() {
    local ct
    ct=$(dmi_read chassis_type)
    case "$ct" in
@@ -245,7 +197,7 @@ index 1f0a6d1..4a40ed2 100644
      *)          chassis="";            icon="computer"         ;;
    esac
  
-@@ -118,12 +119,13 @@ detect_chassis() {
+@@ -118,12 +142,13 @@ detect_chassis() {
    local ct
    ct=$(dmi_read chassis_type)
    case "$ct" in
@@ -261,26 +213,30 @@ index 1f0a6d1..4a40ed2 100644
      *)          echo "unknown"     ;;
    esac
  }
-diff --git a/src/meson.build b/src/meson.build
-index 46020eb..e4a8147 100644
---- a/src/meson.build
-+++ b/src/meson.build
-@@ -7,12 +7,9 @@ hostnamed_deps = [
-   glib_dep,
-   gio_dep,
-   gio_unix,
-+  polkit,
- ]
+@@ -188,8 +213,19 @@ cmd_status() {
+   kernel=$(uname -r)
+   arch=$(uname -m)
  
--if polkit_found
--  hostnamed_deps += polkit
--endif
--
- hostnamed_inc = [
-   config_h_inc,
-   include_directories('.'),
+-  hw_vendor=$(dmi_read sys_vendor)
+-  hw_model=$(dmi_read product_name)
++  dt_dir=${DT_DIR:-/sys/firmware/devicetree/base}
++  dt_model=""
++  dt_vendor=""
++  # Only touch the device tree when the properties exist (they don't on x86);
++  # test first so a missing file never produces a shell redirection error.
++  if [ -r "$dt_dir/model" ]; then
++    dt_model=$(tr -d '\0' < "$dt_dir/model")
++  fi
++  if [ -r "$dt_dir/compatible" ]; then
++    dt_vendor=$(tr '\0' '\n' < "$dt_dir/compatible" | head -n1 | cut -d, -f1)
++  fi
++  hw_vendor=$(first_usable "$(dmi_read sys_vendor)" "$(dmi_read board_vendor)" "$dt_vendor")
++  hw_model=$(first_usable "$(dmi_read product_name)" "$(dmi_read board_name)" "$dt_model")
+   fw_version=$(dmi_read bios_version)
+   fw_date=$(dmi_read bios_date)
+ 
 diff --git a/src/rcl-hostname.c b/src/rcl-hostname.c
-index 315a536..300eea8 100644
+index d38607c..88db2bf 100644
 --- a/src/rcl-hostname.c
 +++ b/src/rcl-hostname.c
 @@ -164,45 +164,80 @@ static void rcl_daemon_init( RclDaemon *self ) {}
@@ -393,18 +349,50 @@ index 315a536..300eea8 100644
  }
  
  /* --------------------------------------------------------------------------
-@@ -285,6 +320,38 @@ read_dmi( const gchar *path )
+@@ -285,6 +320,70 @@ read_dmi( const gchar *path )
    return val ? val : g_strdup( "" );
  }
  
-+/* First non-empty of the given strings, as a newly-allocated string; takes
-+   ownership of nothing and returns "" if all are empty. */
-+static gchar *
-+first_nonempty_dup( const gchar *a, const gchar *b, const gchar *c )
++/* Firmware routinely leaves unfilled template strings in the DMI identity
++   fields (very common on retail desktop boards, e.g. ASUS reports
++   sys_vendor "System manufacturer" and product_name "System Product Name"
++   while the real names live in board_vendor / board_name).  Treat those,
++   and empty values, as "not set" so the next source is used. */
++static gboolean
++rcl_dmi_is_placeholder( const gchar *v )
 +{
-+  if( a && a[0] ) return g_strdup( a );
-+  if( b && b[0] ) return g_strdup( b );
-+  if( c && c[0] ) return g_strdup( c );
++  static const gchar *const junk[] = {
++    "System manufacturer", "System Product Name", "System Version",
++    "To Be Filled By O.E.M.", "To be filled by O.E.M.", "Default string",
++    "Not Applicable", "Not Specified", "N/A", "None", "Unknown", "Undefined",
++    "O.E.M.", "OEM", "Type1ProductConfigId", "All Series",
++    "System Serial Number", "Chassis Serial Number", "Base Board Serial Number",
++    "Serial Number", NULL
++  };
++  gchar   *t;
++  gboolean bad = FALSE;
++  guint    i;
++
++  if( !v )
++    return TRUE;
++  t = g_strstrip( g_strdup( v ) );
++  if( t[0] == '\0' )
++    bad = TRUE;
++  for( i = 0; !bad && junk[i]; i++ )
++    if( g_ascii_strcasecmp( t, junk[i] ) == 0 )
++      bad = TRUE;
++  g_free( t );
++  return bad;
++}
++
++/* First usable (non-empty, non-placeholder) of the given strings, as a
++   newly-allocated string; "" if none is usable. */
++static gchar *
++first_usable_dup( const gchar *a, const gchar *b, const gchar *c )
++{
++  if( !rcl_dmi_is_placeholder( a ) ) return g_strstrip( g_strdup( a ) );
++  if( !rcl_dmi_is_placeholder( b ) ) return g_strstrip( g_strdup( b ) );
++  if( !rcl_dmi_is_placeholder( c ) ) return g_strstrip( g_strdup( c ) );
 +  return g_strdup( "" );
 +}
 +
@@ -432,7 +420,7 @@ index 315a536..300eea8 100644
  /* --------------------------------------------------------------------------
     FirmwareDate parser
  
-@@ -317,6 +384,8 @@ parse_firmware_date_usec (const gchar *date_str)
+@@ -317,6 +416,8 @@ parse_firmware_date_usec (const gchar *date_str)
    return (guint64) t * G_USEC_PER_SEC;
  }
  
@@ -441,27 +429,16 @@ index 315a536..300eea8 100644
  /* --------------------------------------------------------------------------
     Property refresh
     -------------------------------------------------------------------------- */
-@@ -373,14 +442,6 @@ rcl_daemon_sync_dbus_properties( RclHostnameDaemon *daemon )
-                    read_key_value_file( RCL_MACHINE_INFO_FILE, "PRETTY_HOSTNAME" ),
-                    "PrettyHostname" );
- 
--  UPDATE_STR_PROP( icon_name,
--                   read_key_value_file( RCL_MACHINE_INFO_FILE, "ICON_NAME" ),
--                   "IconName" );
--
--  UPDATE_STR_PROP( chassis,
--                   read_key_value_file( RCL_MACHINE_INFO_FILE, "CHASSIS" ),
--                   "Chassis" );
--
-   UPDATE_STR_PROP( deployment,
-                    read_key_value_file( RCL_MACHINE_INFO_FILE, "DEPLOYMENT" ),
-                    "Deployment" );
-@@ -389,37 +450,70 @@ rcl_daemon_sync_dbus_properties( RclHostnameDaemon *daemon )
+@@ -381,46 +482,70 @@ rcl_daemon_sync_dbus_properties( RclHostnameDaemon *daemon )
                     read_key_value_file( RCL_MACHINE_INFO_FILE, "LOCATION" ),
                     "Location" );
  
--  /* ---- fall back chassis / icon from DMI if not set in machine-info ---- */
--  if( priv->chassis == NULL || priv->chassis[0] == '\0' )
+-  /* ---- chassis / icon: machine-info wins, DMI is the fallback ----
+-     The effective value is computed first and then fed through
+-     UPDATE_STR_PROP exactly once, so an unchanged value never produces a
+-     PropertiesChanged entry (previously the machine-info read blanked the
+-     field and the DMI fallback re-set it on every sync, emitting duplicate
+-     Chassis/IconName entries each time). */
 +  /* ---- chassis / icon ----
 +     Chassis: machine-info, then DMI chassis type, then the device-tree
 +     chassis-type property.  Icon: machine-info, else derived from the
@@ -469,22 +446,23 @@ index 315a536..300eea8 100644
 +     through UPDATE_STR_PROP exactly once, so an unchanged value never
 +     produces a PropertiesChanged entry. */
    {
--    gchar *dmi_chassis_type = read_dmi( RCL_DMI_CHASSIS_TYPE );
--    chassis_num = (guint) g_ascii_strtoull( dmi_chassis_type, NULL, 10 );
--    g_free( dmi_chassis_type );
-+    gchar *chassis_val = read_key_value_file( RCL_MACHINE_INFO_FILE, "CHASSIS" );
-+    gchar *icon_val    = read_key_value_file( RCL_MACHINE_INFO_FILE, "ICON_NAME" );
-+
-+    if( chassis_val == NULL || chassis_val[0] == '\0' )
-+    {
-+      gchar *dmi_chassis_type = read_dmi( RCL_DMI_CHASSIS_TYPE );
-+      chassis_num = (guint) g_ascii_strtoull( dmi_chassis_type, NULL, 10 );
-+      g_free( dmi_chassis_type );
+     gchar *chassis_val = read_key_value_file( RCL_MACHINE_INFO_FILE, "CHASSIS" );
+     gchar *icon_val    = read_key_value_file( RCL_MACHINE_INFO_FILE, "ICON_NAME" );
+-    gboolean need_chassis = ( chassis_val == NULL || chassis_val[0] == '\0' );
+-    gboolean need_icon    = ( icon_val    == NULL || icon_val[0]    == '\0' );
  
--    g_free( priv->chassis );
--    priv->chassis = g_strdup( rcl_chassis_type_to_string( chassis_num ) );
-+      g_free( chassis_val );
-+      chassis_val = g_strdup( rcl_chassis_type_to_string( chassis_num ) );
+-    if( need_chassis || need_icon )
++    if( chassis_val == NULL || chassis_val[0] == '\0' )
+     {
+       gchar *dmi_chassis_type = read_dmi( RCL_DMI_CHASSIS_TYPE );
+       chassis_num = (guint) g_ascii_strtoull( dmi_chassis_type, NULL, 10 );
+       g_free( dmi_chassis_type );
+-    }
+ 
+-    if( need_chassis )
+-    {
+       g_free( chassis_val );
+       chassis_val = g_strdup( rcl_chassis_type_to_string( chassis_num ) );
 +
 +      if( chassis_val[0] == '\0' )
 +      {
@@ -497,30 +475,23 @@ index 315a536..300eea8 100644
 +        else
 +          g_free( dt );
 +      }
-+    }
- 
--    g_variant_builder_add( &changed_props, "{sv}", "Chassis",
--                           g_variant_new_string( priv->chassis ) );
--    any_changed = TRUE;
-+    if( icon_val == NULL || icon_val[0] == '\0' )
-+    {
-+      g_free( icon_val );
-+      icon_val = g_strdup( rcl_chassis_to_icon_name( chassis_val ) );
-+    }
+     }
+-    if( need_icon )
 +
-+    UPDATE_STR_PROP( chassis,   chassis_val, "Chassis" );
-+    UPDATE_STR_PROP( icon_name, icon_val,    "IconName" );
++    if( icon_val == NULL || icon_val[0] == '\0' )
+     {
+       g_free( icon_val );
+-      icon_val = g_strdup( rcl_chassis_type_to_icon_name( chassis_num ) );
++      icon_val = g_strdup( rcl_chassis_to_icon_name( chassis_val ) );
+     }
+ 
+     UPDATE_STR_PROP( chassis,   chassis_val, "Chassis" );
+     UPDATE_STR_PROP( icon_name, icon_val,    "IconName" );
    }
  
--  if( priv->icon_name == NULL || priv->icon_name[0] == '\0' )
+-  /* ---- HostnameSource ---- */
 +  /* ---- DefaultHostname: os-release DEFAULT_HOSTNAME, else "localhost" ---- */
-   {
--    g_free( priv->icon_name );
--    priv->icon_name = g_strdup( rcl_chassis_type_to_icon_name( chassis_num ) );
--
--    g_variant_builder_add( &changed_props, "{sv}", "IconName",
--                           g_variant_new_string( priv->icon_name ) );
--    any_changed = TRUE;
++  {
 +    gchar *def = read_key_value_file( RCL_OS_RELEASE_FILE, "DEFAULT_HOSTNAME" );
 +    if( !def || !rcl_hostname_is_valid( def ) )
 +    {
@@ -528,9 +499,8 @@ index 315a536..300eea8 100644
 +      def = g_strdup( "localhost" );
 +    }
 +    UPDATE_STR_PROP( default_hostname, def, "DefaultHostname" );
-   }
- 
--  /* ---- HostnameSource ---- */
++  }
++
 +  /* ---- HostnameSource ----
 +     static    – a static hostname is configured
 +     transient – none configured, kernel hostname was set to something else
@@ -546,32 +516,34 @@ index 315a536..300eea8 100644
        src = "transient";
      else
        src = "default";
-@@ -448,8 +542,22 @@ rcl_daemon_sync_dbus_properties( RclHostnameDaemon *daemon )
+@@ -449,8 +574,24 @@ rcl_daemon_sync_dbus_properties( RclHostnameDaemon *daemon )
                     "OperatingSystemHomeURL" );
  
    /* ---- DMI hardware info ---- */
 -  UPDATE_STR_PROP( hw_vendor,        read_dmi(RCL_DMI_BOARD_VENDOR),  "HardwareVendor" );
 -  UPDATE_STR_PROP( hw_model,         read_dmi(RCL_DMI_PRODUCT_NAME),  "HardwareModel" );
-+  /* Vendor: DMI system vendor, then board vendor, then the device-tree
-+     compatible prefix.  Model: DMI product name, then device-tree model. */
++  /* Vendor: DMI system vendor, board vendor, then the device-tree
++     compatible prefix.  Model: DMI product name, board name, then the
++     device-tree model.  Placeholder strings are skipped at each step. */
 +  {
 +    gchar *sys_v   = read_dmi( RCL_DMI_SYS_VENDOR );
 +    gchar *board_v = read_dmi( RCL_DMI_BOARD_VENDOR );
 +    gchar *compat  = read_dt_string( RCL_DT_COMPATIBLE );
 +    gchar *dt_v    = dt_vendor_from_compatible( compat );
 +    gchar *prod    = read_dmi( RCL_DMI_PRODUCT_NAME );
++    gchar *board_n = read_dmi( RCL_DMI_BOARD_NAME );
 +    gchar *dt_m    = read_dt_string( RCL_DT_MODEL );
 +
-+    UPDATE_STR_PROP( hw_vendor, first_nonempty_dup( sys_v, board_v, dt_v ), "HardwareVendor" );
-+    UPDATE_STR_PROP( hw_model,  first_nonempty_dup( prod, dt_m, NULL ),     "HardwareModel" );
++    UPDATE_STR_PROP( hw_vendor, first_usable_dup( sys_v, board_v, dt_v ), "HardwareVendor" );
++    UPDATE_STR_PROP( hw_model,  first_usable_dup( prod, board_n, dt_m ),  "HardwareModel" );
 +
-+    g_free( sys_v ); g_free( board_v ); g_free( compat );
-+    g_free( dt_v );  g_free( prod );    g_free( dt_m );
++    g_free( sys_v ); g_free( board_v ); g_free( compat ); g_free( dt_v );
++    g_free( prod );  g_free( board_n ); g_free( dt_m );
 +  }
    UPDATE_STR_PROP( firmware_version, read_dmi(RCL_DMI_BIOS_VERSION),  "FirmwareVersion" );
  
    /* FirmwareDate is type 't' (uint64 µs since epoch) per the spec */
-@@ -653,7 +761,7 @@ write_machine_info_key( const gchar  *key,
+@@ -654,7 +795,7 @@ write_machine_info_key( const gchar  *key,
  static gboolean
  rcl_hostname_is_valid( const gchar *name )
  {
@@ -580,7 +552,7 @@ index 315a536..300eea8 100644
  
    if( !name )
      return FALSE;
-@@ -662,16 +770,29 @@ rcl_hostname_is_valid( const gchar *name )
+@@ -663,16 +804,29 @@ rcl_hostname_is_valid( const gchar *name )
    if( len == 0 || len > HOST_NAME_MAX )
      return FALSE;
  
@@ -615,7 +587,7 @@ index 315a536..300eea8 100644
  }
  
  /* --------------------------------------------------------------------------
-@@ -697,8 +818,12 @@ rcl_derive_pretty_hostname( const gchar *name )
+@@ -698,8 +852,12 @@ rcl_derive_pretty_hostname( const gchar *name )
    if( !dot )
      return g_strdup( name );
  
@@ -630,7 +602,7 @@ index 315a536..300eea8 100644
    return g_strndup( name, (gsize)(dot - name) );
  }
  
-@@ -914,17 +1039,62 @@ do_set_machine_info( RclHostnameDaemon *daemon, const gchar *key,
+@@ -915,17 +1073,62 @@ do_set_machine_info( RclHostnameDaemon *daemon, const gchar *key,
    g_dbus_method_invocation_return_value( invocation, NULL );
  }
  
@@ -696,7 +668,33 @@ index 315a536..300eea8 100644
    g_dbus_method_invocation_return_value( invocation,
      g_variant_new("(ay)", &bytes) );
  }
-@@ -960,9 +1130,18 @@ on_check_done( GObject *source, GAsyncResult *res, gpointer user_data )
+@@ -933,7 +1136,24 @@ do_get_product_uuid( GDBusMethodInvocation *invocation )
+ static void
+ do_get_hardware_serial( GDBusMethodInvocation *invocation )
+ {
+-  gchar *serial = read_dmi( RCL_DMI_CHASSIS_SERIAL );
++  gchar *prod_s  = read_dmi( RCL_DMI_PRODUCT_SERIAL );
++  gchar *board_s = read_dmi( RCL_DMI_BOARD_SERIAL );
++  gchar *chas_s  = read_dmi( RCL_DMI_CHASSIS_SERIAL );
++  /* Retail boards commonly leave "Default string" / "System Serial Number"
++     in some of these; use the first one that holds a real value. */
++  gchar *serial  = first_usable_dup( prod_s, board_s, chas_s );
++
++  g_free( prod_s ); g_free( board_s ); g_free( chas_s );
++
++  /* No usable DMI serial (e.g. ARM boards such as the Raspberry Pi): use the
++     device-tree serial-number property. */
++  if( serial[0] == '\0' )
++  {
++    gchar *dt_s = read_dt_string( RCL_DT_SERIAL );
++    g_free( serial );
++    serial = first_usable_dup( dt_s, NULL, NULL );
++    g_free( dt_s );
++  }
+   g_dbus_method_invocation_return_value( invocation,
+     g_variant_new("(s)", serial) );
+   g_free( serial );
+@@ -961,9 +1181,18 @@ on_check_done( GObject *source, GAsyncResult *res, gpointer user_data )
  
    if( !polkit_authorization_result_get_is_authorized( result ) )
    {
@@ -719,14 +717,44 @@ index 315a536..300eea8 100644
      auth_ctx_free( ctx );
      return;
 diff --git a/src/rcl-hostname.h b/src/rcl-hostname.h
-index 1fc92e1..4e5f26a 100644
+index 1fc92e1..16e7965 100644
 --- a/src/rcl-hostname.h
 +++ b/src/rcl-hostname.h
-@@ -164,6 +164,19 @@ void rcl_daemon_sync_dbus_properties ( RclHostnameDaemon *daemon );
+@@ -90,7 +90,7 @@ void       rcl_daemon_set_debug  ( RclDaemon *daemon, gboolean debug );
+     SetDeployment     (s name, b interactive)  – writes DEPLOYMENT to /etc/machine-info
+     SetLocation       (s name, b interactive)  – writes LOCATION to /etc/machine-info
+     GetProductUUID    (b interactive) → ay      – returns DMI product UUID as byte array
+-    GetHardwareSerial (b interactive) → s       – returns DMI chassis serial number
++    GetHardwareSerial (b interactive) → s       – returns the first usable DMI serial (product, board, chassis)
+     Describe          ()             → s        – returns JSON blob of all properties
+ 
+   The 'interactive' boolean follows the systemd convention: when TRUE the
+@@ -156,14 +156,43 @@ void rcl_daemon_sync_dbus_properties ( RclHostnameDaemon *daemon );
+  ---------------------------------------------------------------------------*/
+ 
+ /* DMI sysfs paths (Linux-specific) */
++#ifndef RCL_DMI_CHASSIS_TYPE
+ #define RCL_DMI_CHASSIS_TYPE       "/sys/class/dmi/id/chassis_type"
++#endif
+ #define RCL_DMI_CHASSIS_VENDOR     "/sys/class/dmi/id/chassis_vendor"
++#ifndef RCL_DMI_PRODUCT_NAME
+ #define RCL_DMI_PRODUCT_NAME       "/sys/class/dmi/id/product_name"
++#endif
+ #define RCL_DMI_PRODUCT_UUID       "/sys/class/dmi/id/product_uuid"
+ #define RCL_DMI_CHASSIS_SERIAL     "/sys/class/dmi/id/chassis_serial"
++#define RCL_DMI_PRODUCT_SERIAL     "/sys/class/dmi/id/product_serial"
++#define RCL_DMI_BOARD_SERIAL       "/sys/class/dmi/id/board_serial"
  #define RCL_DMI_BIOS_VERSION       "/sys/class/dmi/id/bios_version"
  #define RCL_DMI_BIOS_DATE          "/sys/class/dmi/id/bios_date"
++#ifndef RCL_DMI_BOARD_VENDOR
  #define RCL_DMI_BOARD_VENDOR       "/sys/class/dmi/id/board_vendor"
++#endif
++#ifndef RCL_DMI_BOARD_NAME
++#define RCL_DMI_BOARD_NAME         "/sys/class/dmi/id/board_name"
++#endif
++#ifndef RCL_DMI_SYS_VENDOR
 +#define RCL_DMI_SYS_VENDOR         "/sys/class/dmi/id/sys_vendor"
++#endif
 +
 +/* Device-tree fallbacks for platforms without DMI (ARM, RISC-V, e.g. the
 +   Raspberry Pi).  Overridable for tests. */
@@ -736,13 +764,16 @@ index 1fc92e1..4e5f26a 100644
 +#ifndef RCL_DT_COMPATIBLE
 +#define RCL_DT_COMPATIBLE          "/sys/firmware/devicetree/base/compatible"
 +#endif
++#ifndef RCL_DT_SERIAL
++#define RCL_DT_SERIAL              "/sys/firmware/devicetree/base/serial-number"
++#endif
 +#ifndef RCL_DT_CHASSIS_TYPE
 +#define RCL_DT_CHASSIS_TYPE        "/sys/firmware/devicetree/base/chassis-type"
 +#endif
  
  /*---------------------------------------------------------------------------
    Chassis type helpers.
-@@ -177,5 +190,7 @@ void rcl_daemon_sync_dbus_properties ( RclHostnameDaemon *daemon );
+@@ -177,5 +206,7 @@ void rcl_daemon_sync_dbus_properties ( RclHostnameDaemon *daemon );
  
  const gchar *rcl_chassis_type_to_icon_name ( guint chassis_type );
  const gchar *rcl_chassis_type_to_string    ( guint chassis_type );
