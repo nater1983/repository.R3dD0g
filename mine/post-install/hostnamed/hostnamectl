@@ -45,7 +45,30 @@ get_os_release() {
 }
 
 dmi_read() {
-  cat "/sys/class/dmi/id/$1" 2>/dev/null || true
+  cat "${DMI_DIR:-/sys/class/dmi/id}/$1" 2>/dev/null || true
+}
+
+# True for empty values and the unfilled template strings firmware leaves in
+# DMI identity fields (e.g. ASUS: sys_vendor "System manufacturer",
+# product_name "System Product Name").  Keep in sync with
+# rcl_dmi_is_placeholder() in src/rcl-hostname.c.
+dmi_is_placeholder() {
+  case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')" in
+    ""|"system manufacturer"|"system product name"|"system version"| \
+    "to be filled by o.e.m."|"default string"|"not applicable"| \
+    "not specified"|"n/a"|"none"|"unknown"|"undefined"|"o.e.m."|"oem"| \
+    "type1productconfigid"|"all series"|"system serial number"| \
+    "chassis serial number"|"base board serial number"|"serial number") return 0 ;;
+  esac
+  return 1
+}
+
+# First usable argument, else empty.
+first_usable() {
+  local v
+  for v in "$@"; do
+    dmi_is_placeholder "$v" || { printf '%s' "$v"; return; }
+  done
 }
 
 machine_info_get() {
@@ -190,8 +213,19 @@ cmd_status() {
   kernel=$(uname -r)
   arch=$(uname -m)
 
-  hw_vendor=$(dmi_read sys_vendor)
-  hw_model=$(dmi_read product_name)
+  dt_dir=${DT_DIR:-/sys/firmware/devicetree/base}
+  dt_model=""
+  dt_vendor=""
+  # Only touch the device tree when the properties exist (they don't on x86);
+  # test first so a missing file never produces a shell redirection error.
+  if [ -r "$dt_dir/model" ]; then
+    dt_model=$(tr -d '\0' < "$dt_dir/model")
+  fi
+  if [ -r "$dt_dir/compatible" ]; then
+    dt_vendor=$(tr '\0' '\n' < "$dt_dir/compatible" | head -n1 | cut -d, -f1)
+  fi
+  hw_vendor=$(first_usable "$(dmi_read sys_vendor)" "$(dmi_read board_vendor)" "$dt_vendor")
+  hw_model=$(first_usable "$(dmi_read product_name)" "$(dmi_read board_name)" "$dt_model")
   fw_version=$(dmi_read bios_version)
   fw_date=$(dmi_read bios_date)
 
