@@ -6,7 +6,7 @@ cd build
     "${MINE_BUILD_ARGS[@]}" \
     $MINE_OPT_ARGS \
     -Dtests=false \
-    -Dprivileged-group=wheel \
+    -Dprivileged-group=wheel
   "${NINJA:=ninja}"
   DESTDIR=$PKG $NINJA install
 cd ..
