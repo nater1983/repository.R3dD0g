@@ -5,6 +5,7 @@ telegram
 hostnamed
 timedated
 localed
+homed
 elogind
 sourcegit
 sync3flash
