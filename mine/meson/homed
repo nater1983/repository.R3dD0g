@@ -1,0 +1,12 @@
+mkdir build
+cd build
+  CFLAGS="$SLKCFLAGS" \
+  CXXFLAGS="$SLKCFLAGS" \
+  meson setup ..\
+    "${MINE_BUILD_ARGS[@]}" \
+    $MINE_OPT_ARGS \
+    -Dtests=false \
+    -Dprivileged-group=wheel \
+  "${NINJA:=ninja}"
+  DESTDIR=$PKG $NINJA install
+cd ..
