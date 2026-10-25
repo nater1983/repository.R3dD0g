@@ -1,0 +1,1 @@
+patch -Np1 -i $CWD/patch/snapd/snapd-lib64.patch || { touch ${SLACK_MINE_BUILD_DIR}/${PKGNAME}.failed ; continue ; }
