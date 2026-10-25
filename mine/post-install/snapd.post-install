@@ -1,0 +1,32 @@
+ln -s snapctl $PKG/usr/lib${LIBDIRSUFFIX}/snapd/snap-exec
+ln -s snapd-tool-wrap $PKG/usr/lib${LIBDIRSUFFIX}/snapd/snapd-apparmor
+
+# symlink snapd to snap due to snapd 2.78 no longer building snap seperate
+install -dm755 $PKG/usr/bin
+ln -sr $PKG/usr/lib${LIBDIRSUFFIX}/snapd/snapd $PKG/usr/bin/snap
+ln -sr $PKG/usr/lib${LIBDIRSUFFIX}/snapd/snapctl $PKG/usr/bin/snapctl
+
+# snapd 2.78 no longer builds snap seperate 
+#go build -o bins/snap -buildmode=pie \
+#  -ldflags "-s -linkmode external -extldflags '$LDFLAGS'" \
+#  ./cmd/snap
+#install -Dm755 bins/snap $PKG/usr/bin/snap
+
+install -Dm755 $CWD/rc.snapd $PKG/etc/rc.d/rc.snapd.new
+sed -i "s|@LIB@|${LIBDIRSUFFIX}|g" $PKG/etc/rc.d/rc.snapd.new
+
+# Build our own minimal systemd-style socket activator for snapd.
+gcc $SLKCFLAGS -o snapd-activate $CWD/snapd-activate.c
+install -Dm755 snapd-activate $PKG/usr/sbin/snapd-activate
+install -Dm644 $CWD/snapd.defaults $PKG/etc/default/snapd
+
+# snap-confine should be executable root
+chmod 0755 $PKG/usr/lib64/snapd/snap-confine
+
+# Use our version of snapd.sh for /etc/profile.d
+install -Dm644 $CWD/snapd.sh $PKG/etc/profile.d/snapd.sh 
+chmod 755 $PKG/etc/profile.d/snapd.sh
+
+# Move dracut configuration file to the correct directory
+mkdir $PKG/etc/dracut.conf.d
+mv $PKG/usr/lib/dracut/dracut.conf.d/50-snapd.conf $PKG/etc/dracut.conf.d
