@@ -1,0 +1,2 @@
+sed -i "s|@LIB@|${LIBDIRSUFFIX}|g" dirs/dirs.go cmd/libsnap-confine-private/tools-dir.h cmd/libsnap-confine-private/utils.c \
+cmd/snapctl/tool/snap-exec/main_test.go
