@@ -1,0 +1,181 @@
+diff --git a/cmd/libsnap-confine-private/tools-dir.h b/cmd/libsnap-confine-private/tools-dir.h
+index 93d19b1..4123335 100644
+--- a/cmd/libsnap-confine-private/tools-dir.h
++++ b/cmd/libsnap-confine-private/tools-dir.h
+@@ -23,7 +23,7 @@
+ /**
+  * Canonical location of tools directory on the host.
+  **/
+-#define SC_CANONICAL_HOST_TOOLS_DIR "/usr/lib/snapd"
++#define SC_CANONICAL_HOST_TOOLS_DIR "/usr/lib@LIB@/snapd"
+ 
+ /**
+  * Alternate location of tools directory on the host.
+diff --git a/cmd/libsnap-confine-private/utils.c b/cmd/libsnap-confine-private/utils.c
+index 4b963e9..9c7d1cd 100644
+--- a/cmd/libsnap-confine-private/utils.c
++++ b/cmd/libsnap-confine-private/utils.c
+@@ -217,7 +217,7 @@ int sc_nonfatal_mkpath(const char *const path, mode_t mode, uid_t uid, uid_t gid
+ 
+ bool sc_is_expected_path(const char *path) {
+     const char *expected_path_re =
+-        "^((/var/lib/snapd)?/snap/(snapd|core)/x?[0-9]+/usr/lib|/usr/lib(exec)?)/snapd/snap-confine$";
++        "^((/var/lib/snapd)?/snap/(snapd|core)/x?[0-9]+/usr/lib@LIB@|/usr/lib@LIB@(exec)?)/snapd/snap-confine$";
+     regex_t re;
+     if (regcomp(&re, expected_path_re, REG_EXTENDED | REG_NOSUB) != 0)
+         die("can not compile regex %s", expected_path_re);
+diff --git a/dirs/dirs.go b/dirs/dirs.go
+index 6d8b67d..4f9a70b 100644
+--- a/dirs/dirs.go
++++ b/dirs/dirs.go
+@@ -181,7 +181,7 @@ const (
+ 
+ 	// DefaultDistroLibexecDir is a default libexecdir used on most
+ 	// distributions
+-	DefaultDistroLibexecDir = "/usr/lib/snapd"
++	DefaultDistroLibexecDir = "/usr/lib@LIB@/snapd"
+ 	// AltDistroLibexecDir is an anterlative libexec dir used on some distributions
+ 	AltDistroLibexecDir = "/usr/libexec/snapd"
+ 
+diff --git a/sandbox/cgroup/cgroup.go b/sandbox/cgroup/cgroup.go
+index cf2a86a..5eae79f 100644
+--- a/sandbox/cgroup/cgroup.go
++++ b/sandbox/cgroup/cgroup.go
+@@ -272,7 +272,9 @@ func ProcessPathInTrackingCgroup(pid int) (string, error) {
+ 				return true
+ 			}
+ 		} else {
+-			if len(e.Controllers) == 1 && e.Controllers[0] == "name=systemd" {
++			// elogind (non-systemd hosts) names its tracking hierarchy
++			// name=elogind instead of name=systemd
++			if len(e.Controllers) == 1 && (e.Controllers[0] == "name=systemd" || e.Controllers[0] == "name=elogind") {
+ 				return true
+ 			}
+ 		}
+diff --git a/sandbox/cgroup/tracking.go b/sandbox/cgroup/tracking.go
+index 4851ecf..bd4eddd 100644
+--- a/sandbox/cgroup/tracking.go
++++ b/sandbox/cgroup/tracking.go
+@@ -329,7 +329,10 @@ func startTransientScope(conn *dbus.Conn, unitName string, pid int) (job dbus.Ob
+ 			logger.Debugf("StartTransientUnit failed with %q: %v", dbusErr.Name, dbusErr.Body)
+ 			// Some specific DBus errors have distinct handling.
+ 			switch dbusErr.Name {
+-			case "org.freedesktop.DBus.Error.NameHasNoOwner":
++			case "org.freedesktop.DBus.Error.NameHasNoOwner",
++				// no systemd1 service file on the bus at all (hosts
++				// without systemd, e.g. Slackware with elogind)
++				"org.freedesktop.DBus.Error.ServiceUnknown":
+ 				// Nothing is providing systemd bus name. This is, most likely,
+ 				// an Ubuntu 14.04 system with the special deputy systemd.
+ 				return "", errDBusNameHasNoOwner
+diff --git a/systemd/emulation.go b/systemd/emulation.go
+index b1a12f3..96823ca 100644
+--- a/systemd/emulation.go
++++ b/systemd/emulation.go
+@@ -36,6 +36,10 @@ import (
+ 
+ type emulation struct {
+ 	rootDir string
++	// live is set when running on a real host without systemd (as
++	// opposed to preseeding): mounts are done for real and enabling,
++	// disabling and masking units is a no-op.
++	live bool
+ }
+ 
+ type notImplementedError struct {
+@@ -59,11 +63,17 @@ func (s *emulation) DaemonReexec() error {
+ }
+ 
+ func (s *emulation) EnableNoReload(services []string) error {
++	if s.live {
++		return nil
++	}
+ 	_, err := systemctlCmd(append([]string{"--root", s.rootDir, "enable"}, services...)...)
+ 	return err
+ }
+ 
+ func (s *emulation) DisableNoReload(services []string) error {
++	if s.live {
++		return nil
++	}
+ 	_, err := systemctlCmd(append([]string{"--root", s.rootDir, "disable"}, services...)...)
+ 	return err
+ }
+@@ -149,7 +159,7 @@ func (s *emulation) EnsureMountUnitFile(unitOptions *MountUnitOptions) (string,
+ 		return "", err
+ 	}
+ 
+-	if modified == MountUnchanged {
++	if modified == MountUnchanged && !s.live {
+ 		return mountUnitName, nil
+ 	}
+ 
+@@ -163,6 +173,10 @@ func (s *emulation) EnsureMountUnitFile(unitOptions *MountUnitOptions) (string,
+ 		return "", fmt.Errorf("cannot check mountpoint in preseed mode: %w", err)
+ 	}
+ 
++	if s.live && modified == MountUnchanged && mounted {
++		return mountUnitName, nil
++	}
++
+ 	// Here we need options that work for the system where we create the
+ 	// tarball, so things are similar to what is done for
+ 	// systemd.EnsureMountUnitFile. For instance, when preseeding in a lxd
+@@ -220,11 +234,17 @@ func (s *emulation) ListMountUnits(snapName, origin string, filter MountUnitFilt
+ }
+ 
+ func (s *emulation) Mask(service string) error {
++	if s.live {
++		return nil
++	}
+ 	_, err := systemctlCmd("--root", s.rootDir, "mask", service)
+ 	return err
+ }
+ 
+ func (s *emulation) Unmask(service string) error {
++	if s.live {
++		return nil
++	}
+ 	_, err := systemctlCmd("--root", s.rootDir, "unmask", service)
+ 	return err
+ }
+diff --git a/systemd/systemd.go b/systemd/systemd.go
+index 82cbfac..86e54e5 100644
+--- a/systemd/systemd.go
++++ b/systemd/systemd.go
+@@ -566,6 +566,11 @@ type Reporter interface {
+ func newSystemdReal(be Backend, rootDir string, mode InstanceMode, rep Reporter) Systemd {
+ 	switch be {
+ 	case RunningSystemdBackend:
++		if NoSystemd() {
++			// SNAPD_NO_SYSTEMD=1: no systemd on this host, mount
++			// snaps directly and do not call systemctl
++			return &emulation{rootDir: rootDir, live: true}
++		}
+ 		return &systemd{rootDir: rootDir, mode: mode, reporter: rep}
+ 	case EmulationModeBackend:
+ 		return &emulation{rootDir: rootDir}
+@@ -574,6 +579,12 @@ func newSystemdReal(be Backend, rootDir string, mode InstanceMode, rep Reporter)
+ 	}
+ }
+ 
++// NoSystemd returns true when snapd was told that this host does not run
++// systemd (SNAPD_NO_SYSTEMD=1).
++func NoSystemd() bool {
++	return os.Getenv("SNAPD_NO_SYSTEMD") == "1"
++}
++
+ // New returns a Systemd that uses the default root directory and omits
+ // --root argument when executing systemctl.
+ func New(mode InstanceMode, rep Reporter) Systemd {
+
+diff --git a/cmd/snapctl/tool/snap-exec/main_test.go b/cmd/snapctl/tool/snap-exec/main_test.go
+--- a/cmd/snapctl/tool/snap-exec/main_test.go
++++ b/cmd/snapctl/tool/snap-exec/main_test.go
+@@ -359,7 +359,7 @@ func (s *snapExecSuite) TestSnapExecCompleteConfined(c *C) {
+ 	restore = snap_exec.MockOsReadlink(func(p string) (string, error) {
+ 		c.Assert(p, Equals, "/proc/self/exe")
+ 		// as if running inside the snap mount namespace
+-		return "/usr/lib/snapd/snap-exec", nil
++		return "/usr/lib@LIB@/snapd/snap-exec", nil
+ 	})
