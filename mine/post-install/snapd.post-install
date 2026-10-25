@@ -12,11 +12,11 @@ ln -sr $PKG/usr/lib${LIBDIRSUFFIX}/snapd/snapctl $PKG/usr/bin/snapctl
 #  ./cmd/snap
 #install -Dm755 bins/snap $PKG/usr/bin/snap
 
-install -Dm755 $CWD/rc.snapd $PKG/etc/rc.d/rc.snapd.new
+install -Dm755 $CWD/post-install/snapd/rc.snapd $PKG/etc/rc.d/rc.snapd.new
 sed -i "s|@LIB@|${LIBDIRSUFFIX}|g" $PKG/etc/rc.d/rc.snapd.new
 
 # Build our own minimal systemd-style socket activator for snapd.
-gcc $SLKCFLAGS -o snapd-activate $CWD/snapd-activate.c
+gcc $SLKCFLAGS -o snapd-activate $CWD/post-install/snapd/snapd-activate.c
 install -Dm755 snapd-activate $PKG/usr/sbin/snapd-activate
 install -Dm644 $CWD/snapd.defaults $PKG/etc/default/snapd
 
@@ -24,7 +24,7 @@ install -Dm644 $CWD/snapd.defaults $PKG/etc/default/snapd
 chmod 0755 $PKG/usr/lib64/snapd/snap-confine
 
 # Use our version of snapd.sh for /etc/profile.d
-install -Dm644 $CWD/snapd.sh $PKG/etc/profile.d/snapd.sh 
+install -Dm644 $CWD/post-install/snapd/snapd.sh $PKG/etc/profile.d/snapd.sh 
 chmod 755 $PKG/etc/profile.d/snapd.sh
 
 # Move dracut configuration file to the correct directory
