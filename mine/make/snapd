@@ -1,0 +1,47 @@
+  export CGO_ENABLED="1"
+  export CGO_CFLAGS="${SLKCFLAGS}"
+  export CGO_CPPFLAGS="${SLKCFLAGS}"
+  export CGO_CXXFLAGS="${SLKCFLAGS}"
+  export CGO_LDFLAGS="${LDFLAGS}"
+
+./mkversion.sh $MODULAR_PACKAGE_VERSION
+
+( cd cmd
+  autoreconf -i -f
+  CFLAGS="$SLKCFLAGS" CXXFLAGS="$SLKCFLAGS" \
+  ./configure \
+    --prefix=/usr \
+    --libdir=/usr/lib${LIBDIRSUFFIX} \
+    --libexecdir=/usr/lib${LIBDIRSUFFIX}/snapd \
+    --sysconfdir=/etc \
+    --localstatedir=/var \
+    --mandir=/usr/man \
+    --with-snap-mount-dir=/var/lib/snapd/snap \
+    --disable-apparmor \
+    --build=$ARCH-slackware-linux
+)
+
+mkdir -p bins
+
+# dynamic, PIE
+for p in snapd snap-failure snap-seccomp; do
+  go build -o bins/$p -buildmode=pie \
+    -ldflags "-s -linkmode external -extldflags '$LDFLAGS'" \
+    ./cmd/$p
+done
+
+# static (no PIE; -static + buildmode=pie breaks with external linking)
+for p in snap-update-ns snapctl; do
+  go build -o bins/$p \
+    -ldflags "-s -linkmode external -extldflags '$LDFLAGS -static'" \
+    ./cmd/$p
+done
+make -C cmd
+make -C cmd install-strip DESTDIR=$PKG
+
+install -Dm755 -t $PKG/usr/lib${LIBDIRSUFFIX}/snapd \
+  bins/snapd \
+  bins/snap-failure \
+  bins/snap-seccomp \
+  bins/snap-update-ns \
+  bins/snapctl
