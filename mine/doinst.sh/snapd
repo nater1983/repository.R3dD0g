@@ -10,8 +10,8 @@ config() {
 
 config etc/rc.d/rc.snapd.new
 
-if [ -x sbin/setcap ] && [ -f usr/lib${LIBDIRSUFFIX}/snapd/snap-confine.caps ]; then
-  sbin/setcap -q - usr/lib${LIBDIRSUFFIX}/snapd/snap-confine < usr/lib${LIBDIRSUFFIX}/snapd/snap-confine.caps
+if [ -x sbin/setcap ] && [ -f usr/lib/snapd/snap-confine.caps ]; then
+  sbin/setcap -q - usr/lib/snapd/snap-confine < usr/lib/snapd/snap-confine.caps
 fi
 
 if [ -x /usr/bin/update-desktop-database ]; then
