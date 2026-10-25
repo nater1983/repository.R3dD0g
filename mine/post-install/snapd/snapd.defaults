@@ -1,0 +1,17 @@
+# /etc/default/snapd - environment for snapd (sourced by /etc/rc.d/rc.snapd)
+
+# No systemd on this host: snapd mounts snaps itself and never calls systemctl
+# (needs snapd-nosystemd.patch)
+SNAPD_NO_SYSTEMD=1
+
+# Never re-exec into the snapd/core snap's own binaries; use the ones installed
+# by this package (the snap's copy has none of the non-systemd patches)
+SNAP_REEXEC=0
+
+# Debug logging
+#SNAPD_DEBUG=1
+
+# Proxy, if needed
+#http_proxy=http://proxy:3128
+#https_proxy=http://proxy:3128
+#no_proxy=localhost,127.0.0.1
