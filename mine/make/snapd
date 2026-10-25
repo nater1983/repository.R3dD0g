@@ -45,3 +45,11 @@ install -Dm755 -t $PKG/usr/lib${LIBDIRSUFFIX}/snapd \
   bins/snap-seccomp \
   bins/snap-update-ns \
   bins/snapctl
+
+make -C data -j1 install DESTDIR=$PKG \
+  SYSTEMDSYSTEMUNITDIR=/usr/lib/systemd/system \
+  SYSTEMDUSERUNITDIR=/usr/lib/systemd/user \
+  BINDIR=/usr/bin \
+  LIBEXECDIR=/usr/lib${LIBDIRSUFFIX} \
+  SNAP_MOUNT_DIR=/var/lib/snapd/snap \
+  SNAPD_ENVIRONMENT_FILE=/etc/default/snapd
