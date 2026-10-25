@@ -30,3 +30,7 @@ chmod 755 $PKG/etc/profile.d/snapd.sh
 # Move dracut configuration file to the correct directory
 mkdir $PKG/etc/dracut.conf.d
 mv $PKG/usr/lib/dracut/dracut.conf.d/50-snapd.conf $PKG/etc/dracut.conf.d
+
+# Remove any systemd files if present:
+rm -rf "$PKG/usr/lib"
+rm -fr "$PKG/usr/lib${LIBDIRSUFFIX}/tmpfiles.d"
