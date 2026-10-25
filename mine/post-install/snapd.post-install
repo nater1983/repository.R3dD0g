@@ -18,7 +18,7 @@ sed -i "s|@LIB@|${LIBDIRSUFFIX}|g" $PKG/etc/rc.d/rc.snapd.new
 # Build our own minimal systemd-style socket activator for snapd.
 gcc $SLKCFLAGS -o snapd-activate $CWD/post-install/snapd/snapd-activate.c
 install -Dm755 snapd-activate $PKG/usr/sbin/snapd-activate
-install -Dm644 $CWD/snapd.defaults $PKG/etc/default/snapd
+install -Dm644 $CWD/post-install/snapd/snapd.defaults $PKG/etc/default/snapd
 
 # snap-confine should be executable root
 chmod 0755 $PKG/usr/lib64/snapd/snap-confine
