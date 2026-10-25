@@ -1,0 +1,69 @@
+#!/bin/sh
+# /etc/rc.d/rc.snapd - snapd with socket activation, no systemd
+LIBEXEC=/usr/lib@LIB@/snapd
+PIDFILE=/run/snapd-activate.pid
+UNITDIR=${SNAPD_UNIT_DIR:-/etc/systemd/system}
+
+# snapd.mounts.target equivalent: snapd records each snap mount as a .mount
+# unit file; with SNAPD_NO_SYSTEMD=1 nothing re-mounts them at boot, so do it here
+mount_snaps() {
+  for f in "$UNITDIR"/*.mount; do
+    [ -f "$f" ] || continue
+    grep -q '^Description=Mount unit for' "$f" || continue
+    what=$(sed -n 's/^What=//p' "$f" | head -n1)
+    where=$(sed -n 's/^Where=//p' "$f" | head -n1)
+    type=$(sed -n 's/^Type=//p' "$f" | head -n1)
+    opts=$(sed -n 's/^Options=//p' "$f" | head -n1)
+    [ -n "$what" ] && [ -n "$where" ] || continue
+    mountpoint -q "$where" && continue
+    mkdir -p "$where"
+    mount -t "$type" -o "${opts:-ro}" "$what" "$where" ||
+      echo "rc.snapd: cannot mount $what on $where" >&2
+  done
+}
+
+# snapd tracks snap processes through a name=systemd (or name=elogind) cgroup v1
+# hierarchy; v2 needs nothing. Only create an empty one if the host has neither.
+mount_cgroup() {
+  [ "$(stat -f -c %T /sys/fs/cgroup 2>/dev/null)" = cgroup2fs ] && return
+  grep -qE 'name=(systemd|elogind)' /proc/self/cgroup && return
+  [ -e /sys/fs/cgroup/systemd ] && return
+  mkdir -p /sys/fs/cgroup/systemd
+  mount -t cgroup -o none,name=systemd cgroup /sys/fs/cgroup/systemd ||
+    echo "rc.snapd: cannot mount name=systemd cgroup" >&2
+}
+
+snapd_start() {
+  [ -s $PIDFILE ] && kill -0 "$(cat $PIDFILE)" 2>/dev/null && { echo "snapd already running"; return; }
+  mkdir -p /var/lib/snapd/snap /var/lib/snapd/environment
+  [ -e /snap ] || ln -s /var/lib/snapd/snap /snap
+
+  # EnvironmentFile= equivalents (must set SNAPD_NO_SYSTEMD=1)
+  set -a
+  [ -r /etc/default/snapd ] && . /etc/default/snapd
+  [ -r /var/lib/snapd/environment/snapd.conf ] && . /var/lib/snapd/environment/snapd.conf
+  set +a
+
+  mount_cgroup
+  mount_snaps
+
+  echo -900 > /proc/self/oom_score_adj 2>/dev/null   # OOMScoreAdjust=-900
+  # snapd.socket: /run/snapd.socket /run/snapd-snap.socket, mode 0666 root:root
+  setsid /usr/sbin/snapd-activate -m 0666 /run/snapd.socket /run/snapd-snap.socket -- \
+    $LIBEXEC/snapd >>/var/log/snapd.log 2>&1 </dev/null &
+  echo $! > $PIDFILE
+}
+
+snapd_stop() {
+  [ -s $PIDFILE ] && kill "$(cat $PIDFILE)" 2>/dev/null   # activator forwards SIGTERM to snapd
+  rm -f $PIDFILE /run/snapd.socket /run/snapd-snap.socket
+}
+
+case "$1" in
+  start)   snapd_start ;;
+  stop)    snapd_stop ;;
+  restart) snapd_stop; sleep 1; snapd_start ;;
+  mount)   mount_snaps ;;
+  *) echo "usage: $0 {start|stop|restart|mount}" ;;
+esac
+
