@@ -1,3 +1,3 @@
 install -Dpm 0644 $CWD/post-install/efibootmgr-gui/org.freedesktop.policykit.pkexec.efiboots.policy -t  $PKG/usr/share/polkit-1/actions
-sed -i "s|Exec=.*|Exec=pkexec /usr/bin/efiboots|" $PKG/usr/share/applications/ovh.elinvention.Efiboots.desktop
+sed -i "s|Exec=.*|Exec=pkexec efiboots|" $PKG/usr/share/applications/ovh.elinvention.Efiboots.desktop
 sed -i "s|Categories=.*|Categories=Application;System;Settings;X-Zenpanel;X-XFCE-SettingsDialog;X-XFCE-SystemSettings;|" ${PKG}/usr/share/applications/ovh.elinvention.Efiboots.desktop
