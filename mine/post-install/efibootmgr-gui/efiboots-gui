@@ -1,0 +1,4 @@
+#!/bin/sh
+xhost +SI:localuser:root >/dev/null 2>&1
+pkexec /usr/libexec/efiboots-root "$DISPLAY" "${XAUTHORITY:-$HOME/.Xauthority}" "$WAYLAND_DISPLAY" "$XDG_RUNTIME_DIR"
+xhost -SI:localuser:root >/dev/null 2>&1
