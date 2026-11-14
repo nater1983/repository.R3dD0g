@@ -4,8 +4,9 @@ install -Dpm 0644 $CWD/post-install/efibootmgr-gui/org.freedesktop.policykit.pke
 cp -av $PKG/usr/share/applications/ovh.elinvention.Efiboots.desktop  $PKG/usr/share/applications/ovh.elinvention.Efiboots2.desktop
 
 sed -i "s|Exec=.*|Exec=pkexec efiboots|" $PKG/usr/share/applications/ovh.elinvention.Efiboots.desktop
-sed -i "s|Exec=.*|Exec=pkexec /usr/libexec/efiboots-root|" $PKG/usr/share/applications/ovh.elinvention.Efiboots2.desktop
+sed -i "s|Exec=.*|Exec=pkexec /usr/libexec/efiboots-gui|" $PKG/usr/share/applications/ovh.elinvention.Efiboots2.desktop
 install -vDm 0755 $CWD/post-install/efibootmgr-gui/efiboots-root -t  $PKG/usr/libexec
+install -vDm 0755 $CWD/post-install/efibootmgr-gui/efiboots-gui -t  $PKG/usr/libexec
 
 sed -i "s|Categories=.*|Categories=Application;System;Settings;X-Zenpanel;X-XFCE-SettingsDialog;X-XFCE-SystemSettings;|" ${PKG}/usr/share/applications/ovh.elinvention.Efiboots.desktop
 sed -i 's|^Name=efiboots|& for Wayland|' $PKG/usr/share/applications/ovh.elinvention.Efiboots2.desktop
