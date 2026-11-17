@@ -1,4 +1,4 @@
 mkdir -p $PKG/usr/bin
-install -vDm 0755 $CWD/cargo-audit $PKG/usr/bin/cargo-audit
+install -vDm 0755 cargo-audit $PKG/usr/bin/cargo-audit
 mkdir -p $PKG/usr/doc/$PKGNAME-$MODULAR_PACKAGE_VERSION
-install -vDm 0644 $CWD/{README.md,LICENSE-*,CHANGELOG.md} $PKG/usr/doc/$PKGNAME-$MODULAR_PACKAGE_VERSION
+install -vDm 0644 {README.md,LICENSE-*,CHANGELOG.md} $PKG/usr/doc/$PKGNAME-$MODULAR_PACKAGE_VERSION
