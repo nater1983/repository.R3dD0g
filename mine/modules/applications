@@ -16,3 +16,4 @@ bwbar
 alacritty-colors
 snapd
 efibootmgr-gui
+cargo-audit
