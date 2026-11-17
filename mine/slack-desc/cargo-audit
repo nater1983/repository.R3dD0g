@@ -1,0 +1,19 @@
+# HOW TO EDIT THIS FILE:
+# The "handy ruler" below makes it easier to edit a package description.
+# Line up the first '|' above the ':' following the base package name, and
+# the '|' on the right side marks the last column you can put a character in.
+# You must make exactly 11 lines for the formatting to be correct. It's also
+# customary to leave one space after the ':' except on otherwise blank lines.
+
+           |-----handy-ruler------------------------------------------------------|
+cargo-audit: cargo-audit (Audit Cargo.lock for crates with vulnerabilities)
+cargo-audit:
+cargo-audit: The RustSec Advisory Database is a repository of security advisories
+cargo-audit: filed against Rust crates published via crates.io. The advisory
+cargo-audit: database itself can be found at:
+cargo-audit: https://github.com/RustSec/advisory-db
+cargo-audit:
+cargo-audit: Homepage: https://github.com/rustsec/rustsec
+cargo-audit:
+cargo-audit:
+cargo-audit:
