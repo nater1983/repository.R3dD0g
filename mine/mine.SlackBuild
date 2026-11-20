@@ -527,6 +527,7 @@ build_mod_pkg() {
             AUTHORS* CONTRIBUTING* COPYING* HACKING* \
             INSTALL* LICENSE* MAINTAINERS README* NEWS* TODO* CHANGES* *.rst NOTICE PKG-INFO *.md *.txt \
             "$PKG/usr/doc/${DOCNAME}-${PACKAGE_VERSION}"
+            rm -f "$PKG/usr/doc/${DOCNAME}-${PACKAGE_VERSION}/meson_options.txt"
 
           # If there's a ChangeLog, include it with a limit of the most recent 1000 lines
           if [ -r ChangeLog ]; then
