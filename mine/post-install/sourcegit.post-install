@@ -5,3 +5,4 @@ mkdir -p $PKG/usr/share/pixmaps
 cp -av com.sourcegit_scm.SourceGit.png $PKG/usr/share/pixmaps
 sed -i 's/^Icon=sourcegit$/Icon=com.sourcegit_scm.SourceGit/' $PKG/usr/share/applications/*.desktop
 sed -i 's/^Exec=AppRun$/Exec=sourcegit/' $PKG/usr/share/applications/*.desktop
+chmod 755 $PKG/{opt,opt/sourcegit}
