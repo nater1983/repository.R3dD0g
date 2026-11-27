@@ -1,0 +1,2 @@
+make C=0 GIT_VERSION=%{version}	
+make install DESTDIR=$PKG prefix=/usr mandir=/usr/man
