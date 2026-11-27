@@ -1,0 +1,240 @@
+From 413850b1a147aa37e0f618ee3879f3c56f34a9f6 Mon Sep 17 00:00:00 2001
+From: Nathaniel Russell <46272571+nater1983@users.noreply.github.com>
+Date: Sun, 22 Nov 2026 15:33:29 -0600
+Subject: [PATCH] plasma: use Formats/LANG for the system locale
+
+---
+ po/localed.pot                              |  4 +-
+ src/backends/plasma6/plasma6-backend.c      | 71 +++++++--------------
+ src/backends/plasma6/plasma6-backend.h      |  2 +-
+ tests/backends/plasma6/test-input-sources.c | 66 ++++++++++++-------
+ 4 files changed, 70 insertions(+), 73 deletions(-)
+
+diff --git a/po/localed.pot b/po/localed.pot
+index 2c7b316..492d8cb 100644
+--- a/po/localed.pot
++++ b/po/localed.pot
+@@ -187,8 +187,8 @@ msgstr ""
+ msgid "rollback rename(%s, %s): %s"
+ msgstr ""
+ 
+-#: src/backends/plasma6/plasma6-backend.c:208
+-msgid "Plasma Translations/LANGUAGE has no valid preference"
++#: src/backends/plasma6/plasma6-backend.c:185
++msgid "Invalid LANG value in Plasma [Formats]"
+ msgstr ""
+ 
+ #: src/backends/gnome/gnome-input-sources-helper.c:141
+diff --git a/src/backends/plasma6/plasma6-backend.c b/src/backends/plasma6/plasma6-backend.c
+index 5993f65..9e90392 100644
+--- a/src/backends/plasma6/plasma6-backend.c
++++ b/src/backends/plasma6/plasma6-backend.c
+@@ -160,56 +160,33 @@ plasma6_console_keymap_lookup(const gchar *layout, const gchar *variant)
+ gchar *
+ rcl_plasma6_backend_locale_from_localerc(const gchar *contents, GError **error)
+ {
+-  GKeyFile *key_file;
+-  gchar *language = NULL;
+-  gchar **preferences = NULL;
+-  gchar *locale = NULL;
+-  guint i;
++  g_autoptr(GKeyFile) key_file = NULL;
++  g_autofree gchar *locale = NULL;
++  const gchar *p;
+ 
+   g_return_val_if_fail(contents != NULL, NULL);
+   key_file = g_key_file_new();
+   if (!g_key_file_load_from_data(key_file, contents, -1, G_KEY_FILE_NONE, error))
+-    goto out;
+-  language = g_key_file_get_string(key_file, "Translations", "LANGUAGE", error);
+-  if (!language)
+-    goto out;
+-  preferences = g_strsplit(language, ":", -1);
+-  for (i = 0; preferences[i]; i++)
++    return NULL;
++
++  locale = g_key_file_get_string(key_file, "Formats", "LANG", error);
++  if (!locale)
++    return NULL;
++
++  /* LANG is a single locale identifier. Keep its codeset and modifier. */
++  for (p = locale; *p; p++)
++    if (!(g_ascii_isalnum(*p) || *p == '_' || *p == '-' ||
++          *p == '.' || *p == '@'))
++      break;
++
++  if (p == locale || *p || p - locale > 128)
+   {
+-    gchar *candidate = g_strstrip(preferences[i]);
+-    const gchar *p;
+-    if (!*candidate)
+-      continue;
+-    for (p = candidate; *p; p++)
+-      if (!(g_ascii_isalnum(*p) || *p == '_' || *p == '-' ||
+-            *p == '.' || *p == '@'))
+-        break;
+-    if (*p || strlen(candidate) > 128)
+-      continue;
+-    {
+-      gchar *base = g_strdup(candidate);
+-      gchar *encoding = strchr(base, '.');
+-      gchar *modifier = strchr(base, '@');
+-
+-      /* plasma-localerc normally stores bare language IDs. If an encoding
+-       * was supplied, discard it: Slackware output is always UTF-8. */
+-      if (encoding && (!modifier || encoding < modifier))
+-        memmove(encoding, modifier ? modifier : encoding + strlen(encoding),
+-                modifier ? strlen(modifier) + 1 : 1);
+-
+-      locale = g_strconcat(base, ".UTF-8", NULL);
+-      g_free(base);
+-    }
+-    break;
+-  }
+-  if (!locale && error && !*error)
+     g_set_error_literal(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_INVALID_VALUE,
+-                        _("Plasma Translations/LANGUAGE has no valid preference"));
+-out:
+-  g_strfreev(preferences);
+-  g_free(language);
+-  g_key_file_unref(key_file);
+-  return locale;
++                        _("Invalid LANG value in Plasma [Formats]"));
++    return NULL;
++  }
++
++  return g_steal_pointer(&locale);
+ }
+ 
+ typedef struct
+@@ -246,12 +223,12 @@ plasma_locale_call_cb(GObject *source_object,
+     g_variant_unref(reply);
+     g_free(self->last_locale);
+     self->last_locale = g_strdup(call->locale);
+-    g_debug("synchronized Plasma 6 translation language: LANG=%s",
++    g_debug("synchronized Plasma 6 locale: LANG=%s",
+             call->locale);
+   }
+   else if (!g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+   {
+-    g_warning("could not synchronize Plasma 6 translation language: %s",
++    g_warning("could not synchronize Plasma 6 locale: %s",
+               error ? error->message : "unknown D-Bus error");
+   }
+   g_clear_error(&error);
+@@ -290,7 +267,7 @@ sync_plasma_locale(RclPlasma6Backend *self)
+   locale = rcl_plasma6_backend_locale_from_localerc(contents, &error);
+   if (!locale)
+   {
+-    g_debug("Plasma locale configuration has no usable translation language: %s",
++    g_debug("Plasma locale configuration has no usable Formats/LANG value: %s",
+             error ? error->message : "unknown configuration error");
+     g_clear_error(&error);
+     goto out;
+diff --git a/src/backends/plasma6/plasma6-backend.h b/src/backends/plasma6/plasma6-backend.h
+index c2f003e..1250d24 100644
+--- a/src/backends/plasma6/plasma6-backend.h
++++ b/src/backends/plasma6/plasma6-backend.h
+@@ -21,7 +21,7 @@ G_DECLARE_FINAL_TYPE(RclPlasma6Backend, rcl_plasma6_backend,
+ RclBackend *rcl_plasma6_backend_new(RclLocaleDaemon *daemon);
+ gboolean rcl_plasma6_backend_start(RclPlasma6Backend *self, GError **error);
+ void rcl_plasma6_backend_stop(RclPlasma6Backend *self);
+-/* Parse Plasma 6 Translations/LANGUAGE and return the first UTF-8 locale. */
++/* Read the configured locale from Plasma 6 Formats/LANG. */
+ gchar *rcl_plasma6_backend_locale_from_localerc(const gchar *contents,
+                                                 GError **error);
+ 
+diff --git a/tests/backends/plasma6/test-input-sources.c b/tests/backends/plasma6/test-input-sources.c
+index 4d12f2d..3368b7c 100644
+--- a/tests/backends/plasma6/test-input-sources.c
++++ b/tests/backends/plasma6/test-input-sources.c
+@@ -11,37 +11,54 @@
+ #include "plasma6-backend.h"
+ 
+ static void
+-test_plasma6_translation_language(void)
++test_plasma6_formats_lang(void)
+ {
+-  const struct { const gchar *input; const gchar *expected; } cases[] = {
+-    { "es:en_GB:en_US", "es.UTF-8" },
+-    { "en_GB", "en_GB.UTF-8" },
+-    { "cz:en_US", "cz.UTF-8" },
+-    { "es.UTF-8:en_GB", "es.UTF-8" },
+-    { ":es:en_GB", "es.UTF-8" },
+-  };
++  const gchar *locales[] = { "ru_RU.UTF-8", "sr_RS.UTF-8@latin", "C" };
+   guint i;
+-  for (i = 0; i < G_N_ELEMENTS(cases); i++)
++
++  for (i = 0; i < G_N_ELEMENTS(locales); i++)
+   {
+-    gchar *contents = g_strdup_printf("[Formats]\nLANG=en_US.UTF-8\n\n[Translations]\nLANGUAGE=%s\n", cases[i].input);
+-    GError *error = NULL;
+-    gchar *locale = rcl_plasma6_backend_locale_from_localerc(contents, &error);
++    g_autofree gchar *contents = g_strdup_printf(
++        "[Formats]\nLANG=%s\n\n[Translations]\nLANGUAGE=ru:en_US\n",
++        locales[i]);
++    g_autoptr(GError) error = NULL;
++    g_autofree gchar *locale =
++        rcl_plasma6_backend_locale_from_localerc(contents, &error);
++
+     g_assert_no_error(error);
+-    g_assert_cmpstr(locale, ==, cases[i].expected);
+-    g_free(locale);
+-    g_free(contents);
++    g_assert_cmpstr(locale, ==, locales[i]);
+   }
+ }
+ 
+ static void
+-test_plasma6_translation_language_invalid(void)
++test_plasma6_formats_lang_missing(void)
+ {
+-  GError *error = NULL;
+-  gchar *locale = rcl_plasma6_backend_locale_from_localerc(
+-      "[Translations]\nLANGUAGE=es;touch /tmp/pwned\n", &error);
++  g_autoptr(GError) error = NULL;
++  g_autofree gchar *locale = rcl_plasma6_backend_locale_from_localerc(
++      "[Formats]\nLC_TIME=en_US.UTF-8\n[Translations]\nLANGUAGE=ru:en_US\n",
++      &error);
++
+   g_assert_null(locale);
+-  g_assert_error(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_INVALID_VALUE);
+-  g_clear_error(&error);
++  g_assert_error(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_KEY_NOT_FOUND);
++}
++
++static void
++test_plasma6_formats_lang_invalid(void)
++{
++  const gchar *values[] = { "", "ru:en_US", "ru_RU.UTF-8 # comment" };
++  guint i;
++
++  for (i = 0; i < G_N_ELEMENTS(values); i++)
++  {
++    g_autofree gchar *contents = g_strdup_printf("[Formats]\nLANG=%s\n",
++                                                  values[i]);
++    g_autoptr(GError) error = NULL;
++    g_autofree gchar *locale =
++        rcl_plasma6_backend_locale_from_localerc(contents, &error);
++
++    g_assert_null(locale);
++    g_assert_error(error, G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_INVALID_VALUE);
++  }
+ }
+ 
+ static void
+@@ -153,8 +170,11 @@ int
+ main(int argc, char **argv)
+ {
+   g_test_init(&argc, &argv, NULL);
+-  g_test_add_func("/plasma6/translation-language", test_plasma6_translation_language);
+-  g_test_add_func("/plasma6/translation-language-invalid", test_plasma6_translation_language_invalid);
++  g_test_add_func("/plasma6/formats-lang", test_plasma6_formats_lang);
++  g_test_add_func("/plasma6/formats-lang-missing",
++                  test_plasma6_formats_lang_missing);
++  g_test_add_func("/plasma6/formats-lang-invalid",
++                  test_plasma6_formats_lang_invalid);
+   g_test_add_func("/plasma6/layout-names-signature",
+                   test_plasma6_layout_names_signature);
+   g_test_add_func("/plasma6/snapshot-format",
