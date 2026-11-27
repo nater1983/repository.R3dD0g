@@ -24,7 +24,7 @@ FORCE="NO"
 MYDIR="${CWD}/src"
 
 # GNOME Git repositories:
-GNOMEGITURI="https://github.com/mhei/mmc-utils"
+GNOMEGITURI="https://github.com/mhei/"
 
 # Default list of modules to checkout:
 DEFMODS="mmc-utils"
