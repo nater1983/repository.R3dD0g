@@ -1,0 +1,4 @@
+patch -Np1 -i $CWD/patch/mmc-utils/0001-Fix-typo.patch || { touch ${SLACK_MINE_BUILD_DIR}/${PKGNAME}.failed ; continue ; }
+patch -Np1 -i $CWD/patch/mmc-utils/0002-man-mmc.1-Fix-warning-macro-not-defined.patch || { touch ${SLACK_MINE_BUILD_DIR}/${PKGNAME}.failed ; continue ; }	
+patch -Np1 -i $CWD/patch/mmc-utils/mmc-utils-no-Werror.patch || { touch ${SLACK_MINE_BUILD_DIR}/${PKGNAME}.failed ; continue ; }	
+patch -Np1 -i $CWD/patch/mmc-utils/mmc-utils-cflags-fortify-source.patch || { touch ${SLACK_MINE_BUILD_DIR}/${PKGNAME}.failed ; continue ; }	
