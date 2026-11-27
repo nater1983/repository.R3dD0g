@@ -17,3 +17,4 @@ alacritty-colors
 snapd
 efibootmgr-gui
 cargo-audit
+mmc-utils
