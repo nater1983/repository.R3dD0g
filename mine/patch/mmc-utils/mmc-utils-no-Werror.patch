@@ -1,0 +1,12 @@
+diff -up mmc-utils-e1281d4de9166b7254ba30bb58f9191fc2c9e7fb/Makefile.orig mmc-utils-e1281d4de9166b7254ba30bb58f9191fc2c9e7fb/Makefile
+--- mmc-utils-e1281d4de9166b7254ba30bb58f9191fc2c9e7fb/Makefile.orig	2024-03-07 11:59:00.000000000 +0100
++++ mmc-utils-e1281d4de9166b7254ba30bb58f9191fc2c9e7fb/Makefile	2024-03-19 13:47:56.740725101 +0100
+@@ -10,7 +10,7 @@ objects = \
+ 	3rdparty/hmac_sha/hmac_sha2.o \
+ 	3rdparty/hmac_sha/sha2.o
+ 
+-CHECKFLAGS = -Wall -Werror -Wuninitialized -Wundef
++CHECKFLAGS = -Wall -Wuninitialized -Wundef
+ 
+ DEPFLAGS = -Wp,-MMD,$(@D)/.$(@F).d,-MT,$@
+ 
