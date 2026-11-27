@@ -1,0 +1,2 @@
+install -vDm 0755 $CWD/post-install/mmc-utils/rpi-update -t $PKG/usr/bin
+install -vDm 0644 $CWD/post-install/mmc-utils/README.md -t $PKG/usr/doc/$PKGNAME-$MODULAR_PACKAGE_VERSION
