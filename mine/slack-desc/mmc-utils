@@ -1,0 +1,19 @@
+# HOW TO EDIT THIS FILE:
+# The "handy ruler" below makes it easier to edit a package description.
+# Line up the first '|' above the ':' following the base package name, and
+# the '|' on the right side marks the last column you can put a character in.
+# You must make exactly 11 lines for the formatting to be correct. It's also
+# customary to leave one space after the ':' except on otherwise blank lines.
+
+         |-----handy-ruler------------------------------------------------------|
+mmc-utils: mmc-utils (Configure MMC storage devices from userspace)
+mmc-utils:
+mmc-utils: mmc-utils is a command line tool for managing eMMC storage devices.
+mmc-utils: It can print and parse extcsd and CID data, get or set write protect
+mmc-utils: status, create general purpose partitions, enable the enhanced user
+mmc-utils: area and write reliability, and set a 4KB sector size.
+mmc-utils:
+mmc-utils: It also handles boot partitions and bus conditions, BKOPS, cache
+mmc-utils: control, permanent H/W reset, CMD13 status, sanitize, and RPMB key,
+mmc-utils: counter, read and write operations.
+mmc-utils: Homepage: https://github.com/mhei/mmc-utils
