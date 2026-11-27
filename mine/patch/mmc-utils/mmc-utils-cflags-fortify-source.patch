@@ -1,0 +1,11 @@
+diff -up mmc-utils-1.0/Makefile.orig mmc-utils-1.0/Makefile
+--- mmc-utils-1.0/Makefile.orig	2025-06-25 12:14:57.025168157 +0200
++++ mmc-utils-1.0/Makefile	2025-06-25 12:32:28.858244245 +0200
+@@ -1,6 +1,6 @@
+ CC ?= gcc
+ GIT_VERSION := "$(shell git describe --abbrev=6 --always --tags)"
+-AM_CFLAGS = -D_FILE_OFFSET_BITS=64 -D_FORTIFY_SOURCE=2 \
++AM_CFLAGS = -D_FILE_OFFSET_BITS=64 \
+ 	    -DVERSION=\"$(GIT_VERSION)\"
+ CFLAGS ?= -g -O2
+ objects = \
