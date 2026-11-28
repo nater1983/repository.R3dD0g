@@ -17,7 +17,48 @@ do_csd()  { echo "== CSD =="; mmc csd read "$(cardpath)"; }
 do_scr()  { echo "== SCR =="; mmc scr read "$(cardpath)"; }
 do_life() { echo "== EXT_CSD life/EOL =="; mmc extcsd read "$MMCDEV" | grep -E "LIFE_TIME|PRE_EOL"; }
 do_nvme() { echo "== NVMe SMART =="; nvme smart-log "$NVMEDEV" | grep -E "percentage_used|available_spare|media_errors"; }
-do_all()  { do_cid; echo; do_csd; echo; do_scr; echo; do_life; echo; do_nvme; }
+
+do_info() {
+    echo "== SD card info =="
+    for f in manfid oemid name date serial type; do
+        printf '%-8s %s\n' "$f" "$(cat /sys/block/mmcblk0/device/$f 2>/dev/null)"
+    done
+}
+
+do_nvmefull() {
+    echo "== NVMe temp/hours/shutdowns =="
+    nvme smart-log "$NVMEDEV" | grep -E "critical_warning|temperature|power_on_hours|unsafe_shutdowns|data_units_written|num_err_log"
+}
+
+do_smartctl() { echo "== smartctl =="; smartctl -a "$NVMEDEV"; }
+
+do_temp() {
+    echo "== CPU temp / throttling =="
+    if command -v vcgencmd >/dev/null; then
+        vcgencmd measure_temp
+        vcgencmd get_throttled
+        vcgencmd measure_clock arm
+    else
+        echo "temp: $(( $(cat /sys/class/thermal/thermal_zone0/temp) / 1000 )) C"
+    fi
+}
+
+do_disk() {
+    echo "== Filesystem usage =="; df -hT -x tmpfs -x devtmpfs
+    echo; echo "== Inodes =="; df -i -x tmpfs -x devtmpfs
+}
+
+do_errors() {
+    echo "== Kernel storage errors =="
+    dmesg | grep -iE "I/O error|blk_update_request|EXT4-fs error|nvme.*(timeout|reset)|mmcblk0.*(error|fail)" | tail -n 50
+}
+
+do_pcie() {
+    echo "== NVMe PCIe link =="
+    lspci -vv 2>/dev/null | grep -E "Non-Volatile|LnkCap:|LnkSta:"
+}
+
+do_trim() { echo "== Mounts / TRIM =="; findmnt -o TARGET,SOURCE,FSTYPE,OPTIONS; echo; lsblk -D; }
 
 run() {
     local rows cols w h
@@ -28,22 +69,36 @@ run() {
 }
 
 while :; do
-    CHOICE=$(dialog --stdout --title "MMC / NVMe Health" --menu "Select:" 16 60 7 \
-        1 "CID (card identification)" \
-        2 "CSD (card specific data)" \
-        3 "SCR (SD config register)" \
-        4 "EXT_CSD life time (eMMC only)" \
-        5 "NVMe SMART" \
-        6 "All" \
-        0 "Exit") || break
+    CHOICE=$(dialog --stdout --no-cancel --title "MMC / NVMe Health" --menu "Arrows + Enter:" 22 60 15 \
+        1  "CID (card identification)" \
+        2  "CSD (card specific data)" \
+        3  "SCR (SD config register)" \
+        4  "EXT_CSD life time (eMMC only)" \
+        5  "NVMe SMART" \
+        6  "SD card info" \
+        7  "NVMe temp/hours/shutdowns" \
+        8  "smartctl full report" \
+        9 "CPU temp / throttling" \
+        10 "Disk / inode usage" \
+        11 "Storage errors (dmesg)" \
+        12 "NVMe PCIe link" \
+        13 "Mounts / TRIM" \
+        0  "Exit") || break
     case $CHOICE in
-        1) run do_cid  "CID" ;;
-        2) run do_csd  "CSD" ;;
-        3) run do_scr  "SCR" ;;
-        4) run do_life "EXT_CSD" ;;
-        5) run do_nvme "NVMe" ;;
-        6) run do_all  "All" ;;
-        0) break ;;
+        1)  run do_cid "CID" ;;
+        2)  run do_csd "CSD" ;;
+        3)  run do_scr "SCR" ;;
+        4)  run do_life "EXT_CSD" ;;
+        5)  run do_nvme "NVMe" ;;
+        6)  run do_info "SD info" ;;
+        7)  run do_nvmefull "NVMe" ;;
+        8)  run do_smartctl "smartctl" ;;
+        9) run do_temp "Thermal" ;;
+        10) run do_disk "Disk" ;;
+        11) run do_errors "Errors" ;;
+        12) run do_pcie "PCIe" ;;
+        13) run do_trim "Mounts" ;;
+        0)  break ;;
     esac
 done
 clear
