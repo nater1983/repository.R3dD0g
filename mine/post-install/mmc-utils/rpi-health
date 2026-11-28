@@ -61,11 +61,12 @@ do_pcie() {
 do_trim() { echo "== Mounts / TRIM =="; findmnt -o TARGET,SOURCE,FSTYPE,OPTIONS; echo; lsblk -D; }
 
 run() {
-    local rows cols w h
+    local rows cols tmp
     read -r rows cols < <(stty size 2>/dev/null || echo "24 80")
-    h=$((rows - 4)); w=$((cols - 6))
-    "$1" 2>&1 | tr -d '\r' | expand -t 4 | fold -s -w $((w - 6)) | sed 's/[[:space:]]*$//' \
-        | dialog --title "$2" --programbox "$h" "$w"
+    tmp=$(mktemp)
+    "$1" 2>&1 | tr -d '\r' | expand -t 4 | sed 's/[[:space:]]*$//' >"$tmp"
+    whiptail --title "$2" --scrolltext --textbox "$tmp" $((rows - 4)) $((cols - 6))
+    rm -f "$tmp"
 }
 
 while :; do
