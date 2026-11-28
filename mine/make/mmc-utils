@@ -1,2 +1,2 @@
-make C=0 GIT_VERSION=%{version}	
+make C=0 GIT_VERSION=$MODULAR_PACKAGE_VERSION
 make install DESTDIR=$PKG prefix=/usr mandir=/usr/man
