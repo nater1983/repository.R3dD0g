@@ -1,0 +1,49 @@
+#!/bin/bash
+# mmc-health: dialog front end for mmc-utils / nvme-cli
+MMCDEV=${MMCDEV:-/dev/mmcblk0}
+NVMEDEV=${NVMEDEV:-/dev/nvme0}
+
+[ "$(id -u)" -eq 0 ] || { echo "run as root"; exit 1; }
+command -v dialog >/dev/null || { echo "dialog not installed"; exit 1; }
+
+cardpath() {
+    for d in /sys/class/mmc_host/mmc*/mmc*:*; do
+        [ -d "$d" ] && { echo "$d"; return; }
+    done
+}
+
+do_cid()  { echo "== CID =="; mmc cid read "$(cardpath)"; }
+do_csd()  { echo "== CSD =="; mmc csd read "$(cardpath)"; }
+do_scr()  { echo "== SCR =="; mmc scr read "$(cardpath)"; }
+do_life() { echo "== EXT_CSD life/EOL =="; mmc extcsd read "$MMCDEV" | grep -E "LIFE_TIME|PRE_EOL"; }
+do_nvme() { echo "== NVMe SMART =="; nvme smart-log "$NVMEDEV" | grep -E "percentage_used|available_spare|media_errors"; }
+do_all()  { do_cid; echo; do_csd; echo; do_scr; echo; do_life; echo; do_nvme; }
+
+run() {
+    local rows cols w h
+    read -r rows cols < <(stty size 2>/dev/null || echo "24 80")
+    h=$((rows - 4)); w=$((cols - 6))
+    "$1" 2>&1 | tr -d '\r' | expand -t 4 | fold -s -w $((w - 6)) | sed 's/[[:space:]]*$//' \
+        | dialog --title "$2" --programbox "$h" "$w"
+}
+
+while :; do
+    CHOICE=$(dialog --stdout --title "MMC / NVMe Health" --menu "Select:" 16 60 7 \
+        1 "CID (card identification)" \
+        2 "CSD (card specific data)" \
+        3 "SCR (SD config register)" \
+        4 "EXT_CSD life time (eMMC only)" \
+        5 "NVMe SMART" \
+        6 "All" \
+        0 "Exit") || break
+    case $CHOICE in
+        1) run do_cid  "CID" ;;
+        2) run do_csd  "CSD" ;;
+        3) run do_scr  "SCR" ;;
+        4) run do_life "EXT_CSD" ;;
+        5) run do_nvme "NVMe" ;;
+        6) run do_all  "All" ;;
+        0) break ;;
+    esac
+done
+clear
